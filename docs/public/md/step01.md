@@ -6,12 +6,16 @@
 
 | パス | 役割 |
 |---|---|
+| `docs/public/md/step01.md` | このドキュメント |
+| `docs/public/artifact/step01.html` | 解説用アーティファクト |
+| `docs/public/index.html` | docs ビューア。`fetch` + marked で md を描画し、artifact は iframe 表示 |
+| `docs/nginx.conf` | docs 配信（`autoindex` でファイル一覧、`.md` を `text/plain` 扱い） |
 | `frontend/public/index.html` | DOM の骨組み（レイヤ2枚・ツールバー・シークバー） |
 | `frontend/public/css/style.css` | 見た目と**アニメーション本体**（`transition` は CSS 側） |
 | `frontend/public/js/reader.js` | 状態管理と回転角の付け外し |
 | `frontend/public/assets/pages/page-01..10.svg` | 動作確認用ダミーページ10枚 |
-| `tools/generate_dummy_pages.py` | ダミーページ生成スクリプト |
 | `frontend/Dockerfile` / `frontend/nginx.conf` | 静的配信 |
+| `tools/generate_dummy_pages.py` | ダミーページ生成スクリプト |
 | `compose.yaml` | ローカル起動（`:8080`）。`backend` サービスの追加箇所をコメントで確保 |
 
 公開されるのは `frontend/public/` 配下のみです。`Dockerfile` / `nginx.conf` / `tools/` はその外に置いてあるため Web からは参照されません。`compose.yaml` では `public/` を**1つだけ**バインドマウントしています（サブディレクトリを個別にマウントすると Docker Desktop 側でマウントが外れ、コンテナ内が空になることがあるため）。あわせて `sendfile off`（`server` コンテキスト）で、更新後に古い内容が配信される問題を回避しています。

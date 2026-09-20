@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>APIとCDNの分離ノート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / backend + cdn</div>
+    <h1>API と CDN の分離ノート</h1>
+    <p class="tagline">ベタ書きだったページ一覧を API に移し、画像は API を通さず CDN から直接配る。その線の引き方と、キャッシュの効かせ方。</p>
+    <div class="meta">
+      <span><b>対象</b> backend/ · cdn/ · reader.js</span>
+      <span><b>API</b> Laravel 13.32 / PHP 8.4</span>
+      <span><b>DB</b> まだ無し (PHP にベタ書き)</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s1">4つのコンテナ</a></li>
+      <li><a href="#s2">画像を API に通さない</a></li>
+      <li><a href="#s3">API の形</a></li>
+      <li><a href="#s4">キャッシュ戦略</a></li>
+      <li><a href="#s5">CDN の nginx 設定</a></li>
+      <li><a href="#s6">フロントの接続</a></li>
+      <li><a href="#s7">起動に失敗したとき</a></li>
+      <li><a href="#s8">動作確認</a></li>
+      <li><a href="#s9">ハマりどころ</a></li>
+      <li><a href="#s10">積み残し</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">4つのコンテナ</h2>
+    <p class="lede">Step.01 の frontend / docs に、画像を配る <code>cdn</code> と JSON を返す <code>backend</code> が加わった。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>サービス</th><th>ポート</th><th>中身</th><th>役割</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>frontend</code></td><td>8080</td><td>nginx:1.27-alpine</td><td>ビューア本体。HTML / CSS / JS のみ</td></tr>
+          <tr><td><code>backend</code></td><td>8000</td><td>php:8.4-cli-alpine</td><td>書誌情報とページ一覧を JSON で返す</td></tr>
+          <tr><td><code>cdn</code></td><td>8082</td><td>nginx:1.27-alpine</td><td>ページ画像。動的処理は一切しない</td></tr>
+          <tr><td><code>docs</code></td><td>8081</td><td>nginx:1.27-alpine</td><td>このドキュメント</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><code>backend</code> だけ <code>build</code>、残り3つは公式イメージをそのまま使っている。<code>cdn</code> と <code>docs</code> は「公開ディレクトリと設定ファイルをマウントするだけ」で同じ形をしている。</p>
+
+    <div class="note">
+      <span class="note__label">Step.01 から引き継いだ約束</span>
+      <p>公開するのは <code>public/</code> ひとつだけ、マウントも <code>public/</code> ひとつだけ（サブディレクトリを個別にマウントすると Docker Desktop 側でマウントが外れる）。<code>nginx.conf</code> は <code>public/</code> の外。<code>sendfile off</code>。cdn も同じ規則に従っている。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">画像を API に通さない</h2>
+    <p class="lede">API が返すのは画像の <strong>URL だけ</strong>。バイト列は CDN からブラウザへ直接流れる。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>ブラウザ</b><span>reader.js</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>API :8000</b><span>total_pages と URL 10個 (JSON 約2KB)</span></div>
+    </div>
+    <div class="flow">
+      <div class="flow__box"><b>ブラウザ</b><span>&lt;img src&gt;</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>CDN :8082</b><span>page-01.svg … (画像本体)</span></div>
+    </div>
+
+    <p>この線を引いておくと、<strong>PHP のプロセス数がページ表示のボトルネックにならない</strong>。読者が10ページめくっても API へのリクエストは起動時の1回だけで、あとは静的ファイル配信だけが走る。</p>
+
+    <p>将来 CDN を実サービス（CloudFront / Cloud CDN など）に差し替えるときも、変わるのは <code>CDN_BASE_URL</code> の値だけで、フロントも API のロジックも触らずに済む。</p>
+
+    <div class="note">
+      <span class="note__label">ベース URL はブラウザ基準で渡す</span>
+      <p><code>compose.yaml</code> では <code>CDN_BASE_URL: "http://localhost:8082"</code> を渡している。Docker のネットワーク内なら <code>http://cdn</code> で届くが、<strong>この URL を実際に叩くのは PHP ではなくブラウザ</strong>なので、コンテナ名を入れると解決できない。API が組み立てた URL が誰の名前解決を通るのかで決まる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">API の形</h2>
+    <p class="lede">エンドポイントは2本。ビューアは1本目だけで起動できる。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>メソッド</th><th>パス</th><th>返すもの</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>GET</code></td><td><code>/api/books/{slug}</code></td><td>書誌情報 + ページ一覧</td></tr>
+          <tr><td><code>GET</code></td><td><code>/api/books/{slug}/pages</code></td><td>ページ一覧のみ</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+<pre>{
+  <span class="s">"data"</span>: {
+    <span class="s">"slug"</span>:         <span class="s">"sample"</span>,
+    <span class="s">"title"</span>:        <span class="s">"Docker で作る電子書籍サービス"</span>,
+    <span class="s">"published_at"</span>: <span class="s">"2026-09-20"</span>,
+    <span class="s">"total_pages"</span>:  <span class="s">10</span>,
+    <span class="s">"pages"</span>: [
+      {
+        <span class="s">"page_no"</span>:    <span class="s">1</span>,
+        <span class="s">"img_path"</span>:   <span class="s">"/books/sample/page-01.svg"</span>,        <span class="c">← DB に入れる値</span>
+        <span class="s">"updated_at"</span>: <span class="s">"2026-09-20T20:00:00+00:00"</span>,
+        <span class="s">"url"</span>:        <span class="s">"http://localhost:8082/books/sample/page-01.svg?v=1758398400"</span>
+      }                                                       <span class="c">↑ ブラウザが使う完成形</span>
+    ]
+  }
+}</pre>
+
+    <p><code>img_path</code> と <code>url</code> を両方返している。前者は CDN のドキュメントルートからの相対パス、後者はベース URL とキャッシュバスターを足した完成形。フロントが見るのは <code>url</code> だけで、<code>img_path</code> は将来の管理画面やデバッグのために残してある。</p>
+
+    <h3>データはまだ PHP の定数</h3>
+    <p><code>BookController::BOOKS</code> にベタ書きしている。ただし<strong>キーの構造を将来のテーブルに合わせてある</strong>ので、DB を入れる段階では定数を Eloquent のクエリに差し替えるだけで、レスポンスの形は変わらない。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>ベタ書き</th><th>想定テーブル</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>配列のキー <code>'sample'</code></td><td><code>books.slug</code></td></tr>
+          <tr><td><code>title</code> / <code>description</code> / <code>published_at</code></td><td><code>books</code> の各カラム</td></tr>
+          <tr><td><code>pages[].page_no</code> / <code>img_path</code> / <code>updated_at</code></td><td><code>books_pages</code> の各カラム</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="note__label">例外も JSON で返す</span>
+      <p><code>bootstrap/app.php</code> で <code>shouldRenderJsonWhen(fn ($request) =&gt; $request-&gt;is('api/*'))</code> を設定してある。これが無いと、存在しない slug を叩いたときに Laravel の HTML エラーページが返り、フロント側の <code>res.json()</code> がパースエラーで落ちる。<strong>API の失敗は必ず JSON で返す。</strong></p>
+    </div>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">キャッシュ戦略</h2>
+    <p class="lede">このステップの主題。方針はひとつ——<strong>画像は1年キャッシュさせる。差し替えたら URL を変える。</strong></p>
+
+    <p>ふたつの設定が組でひとつの仕組みになっている。片方だけでは成り立たない。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>どこ</th><th>何をする</th><th>効果</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>CDN</strong></td>
+            <td><code>Cache-Control: public, max-age=31536000, immutable</code></td>
+            <td>一度読んだ画像は二度と取りに来ない</td>
+          </tr>
+          <tr>
+            <td><strong>API</strong></td>
+            <td><code>?v={updated_at の Unix time}</code> を付けて返す</td>
+            <td>差し替えたページだけ URL が変わる</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>immutable が効く場面</h3>
+    <p><code>max-age</code> だけでも有効期限内なら再取得は起きないが、<strong>ユーザーがリロードすると条件付きリクエスト（<code>If-Modified-Since</code>）が飛ぶ</strong>。画像10枚なら 10 往復。<code>immutable</code> を付けるとブラウザはこの再検証もしなくなる。「中身は絶対に変わらない」と宣言しているので、確認する理由がない。</p>
+
+    <h3>だから URL 側で回す</h3>
+    <p>「絶対に変わらない」と言い切った以上、同じ URL のまま画像を差し替えても届かない。そこで <code>books_pages.updated_at</code> を <code>?v=</code> に載せる。</p>
+
+<pre><span class="c">// BookController::pageList()</span>
+$version = Carbon::parse($page[<span class="s">'updated_at'</span>])-&gt;getTimestamp();
+<span class="s">'url'</span> =&gt; $base.$page[<span class="s">'img_path'</span>].<span class="s">'?v='</span>.$version,</pre>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 640 230" role="img" aria-label="3ページ目だけ差し替えたとき、URL が変わるのは3ページ目だけで、他のページのキャッシュは生き続ける">
+          <style>
+            .lbl  { font: 500 12px "IBM Plex Mono", monospace; fill: #7b8797; }
+            .url  { font: 400 11.5px "IBM Plex Mono", monospace; fill: #4a5563; }
+            .urlN { font: 500 11.5px "IBM Plex Mono", monospace; fill: #b0472e; }
+            .hit  { font: 500 11px "IBM Plex Mono", monospace; fill: #146b57; }
+            .miss { font: 500 11px "IBM Plex Mono", monospace; fill: #b0472e; }
+            .bx   { fill: none; stroke: #c7ced8; stroke-width: 1; }
+            .bxN  { fill: none; stroke: #b0472e; stroke-width: 1.5; }
+            @media (prefers-color-scheme: dark) {
+              .lbl { fill: #7b8797; } .url { fill: #a9b3c0; } .urlN { fill: #e5836a; }
+              .hit { fill: #49c2a2; } .miss { fill: #e5836a; }
+              .bx { stroke: #3b434d; } .bxN { stroke: #e5836a; }
+            }
+          </style>
+
+          <text class="lbl" x="0" y="16">page-03.svg だけ差し替えた</text>
+
+          <text class="lbl" x="0" y="52">BEFORE</text>
+          <rect class="bx" x="70" y="38" width="300" height="20" rx="3"/>
+          <text class="url" x="80" y="52">/page-02.svg?v=1758398400</text>
+          <rect class="bx" x="70" y="64" width="300" height="20" rx="3"/>
+          <text class="url" x="80" y="78">/page-03.svg?v=1758398400</text>
+          <rect class="bx" x="70" y="90" width="300" height="20" rx="3"/>
+          <text class="url" x="80" y="104">/page-04.svg?v=1758398400</text>
+
+          <text class="lbl" x="0" y="150">AFTER</text>
+          <rect class="bx" x="70" y="136" width="300" height="20" rx="3"/>
+          <text class="url" x="80" y="150">/page-02.svg?v=1758398400</text>
+          <text class="hit" x="390" y="150">同じ URL → キャッシュから即表示</text>
+
+          <rect class="bxN" x="70" y="162" width="300" height="20" rx="3"/>
+          <text class="urlN" x="80" y="176">/page-03.svg?v=1758484800</text>
+          <text class="miss" x="390" y="176">URL が変わった → 取りに行く</text>
+
+          <rect class="bx" x="70" y="188" width="300" height="20" rx="3"/>
+          <text class="url" x="80" y="202">/page-04.svg?v=1758398400</text>
+          <text class="hit" x="390" y="202">同じ URL → キャッシュから即表示</text>
+        </svg>
+      </div>
+      <figcaption>更新したページ以外のキャッシュは生きたまま残る</figcaption>
+    </figure>
+
+    <p>API 自身はキャッシュさせていない（<code>Cache-Control: no-cache</code>）。だから新しい <code>?v=</code> は次のリロードで確実に届く。<strong>「変わらないもの」を長く、「変わるもの」を短く</strong>——キャッシュの効かせ方はこの一行に尽きる。</p>
+
+    <div class="note">
+      <span class="note__label">Cache-Control を2行出さない</span>
+      <p>nginx の <code>expires</code> ディレクティブは <code>Cache-Control</code> を自分で出力する。<code>add_header Cache-Control</code> と併用すると<strong>ヘッダが2行になり、どちらが採用されるかが環境依存になる</strong>。<code>immutable</code> は <code>expires</code> では書けないので、<code>add_header</code> 1行にまとめている。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">CDN の nginx 設定</h2>
+    <p class="lede">配るのはページ画像だけ。動的処理は一切しない、と決めた上での設定。</p>
+
+    <h3>圧縮するもの / しないもの</h3>
+
+<pre>gzip_types      image/svg+xml;   <span class="c">← SVG はテキストなので効く</span>
+gzip_comp_level 6;
+gzip_min_length 512;
+gzip_static     on;              <span class="c">← page-01.svg.gz があればそれを返す</span></pre>
+
+    <p><strong>PNG / JPEG / WebP / AVIF は対象に入れていない。</strong> これらは既に圧縮済みで、gzip をかけてもほぼ縮まらず CPU を捨てるだけになる。「全部 gzip」は設定としては短いが、画像配信では素直に損をする。</p>
+
+    <p><code>gzip_static on</code> は事前生成した <code>.gz</code> を優先する設定。今は <code>.gz</code> を置いていないので実行時圧縮だが、ページ枚数が増えたらビルド時に生成して切り替えられる。</p>
+
+    <h3>配らないものを決める</h3>
+
+<pre>location ~* \.(php|js|mjs|json|html?|conf|env|sh|py)$ {
+    <span class="k">return</span> <span class="s">404</span>;
+}</pre>
+
+    <p>画像しか置かない場所なので、それ以外の拡張子は拒否する。<code>autoindex on</code> でディレクトリを一覧できるようにしてあるぶん、置き間違えたファイルが見えてしまう事故を1枚挟んで防いでいる。<strong><code>autoindex</code> は開発時の確認用なので、本番では外す。</strong></p>
+
+    <h3>その他</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>設定</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td><code>open_file_cache</code></td><td>同じファイルを繰り返し配るので、メタ情報をキャッシュして <code>stat</code> の回数を減らす</td></tr>
+          <tr><td><code>sendfile off</code></td><td>Docker Desktop の仮想 FS と相性が悪く、差し替え後に古い内容が配信される（Step.01 の frontend と同じ）</td></tr>
+          <tr><td><code>access_log off</code></td><td>画像は本数が多く、ログが実質ノイズになる</td></tr>
+          <tr><td><code>Access-Control-Allow-Origin: *</code></td><td>将来 <code>fetch</code> や <code>canvas</code> で画像を扱う場合に備えて</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================== 6 -->
+  <section id="s6">
+    <h2 data-sec="§06">フロントの接続</h2>
+    <p class="lede">CONFIG から固定値が消えた。それ以外はほとんど変わっていない。</p>
+
+<pre><span class="c">// Step.01</span>
+totalPages: <span class="s">10</span>,
+pageSrc: (n) =&gt; <span class="s">`assets/pages/page-${String(n).padStart(2,'0')}.svg`</span>,
+
+<span class="c">// Step.02</span>
+api: { base: <span class="s">'http://localhost:8000/api'</span>, slug: <span class="s">'sample'</span> },
+totalPages: <span class="s">0</span>,                         <span class="c">// API の total_pages で上書き</span>
+pageSrc: (n) =&gt; pageUrls.get(n) ?? <span class="s">''</span>,   <span class="c">// 中身は API レスポンス</span></pre>
+
+    <div class="note">
+      <span class="note__label">呼び出し側は1行も変わっていない</span>
+      <p><code>pageSrc</code> のシグネチャ（ページ番号 → URL の文字列）を保ったので、<code>goTo()</code> / <code>preloadAround()</code> / <code>render()</code> は無変更。Step.01 で<strong>画像URLの決定を1箇所に閉じ込めておいた</strong>ことが、そのまま差し替え可能性になっている。<code>pageUrls</code> を <code>Map</code> にしたのも、将来ページを分割取得する（全部揃う前に先頭だけ表示する）余地を残すため。</p>
+    </div>
+
+    <h3>CORS は設定していない</h3>
+    <p><code>:8080</code> から <code>:8000</code> への <code>fetch</code> はクロスオリジンだが、<strong>Laravel 11 以降は <code>HandleCors</code> がグローバルミドルウェアに最初から入っている</strong>。フレームワーク既定の設定が <code>paths: ['api/*']</code> / <code>allowed_origins: ['*']</code> なので、<code>config/cors.php</code> を置かなくても <code>/api/*</code> は通る。</p>
+    <p>認証を入れて Cookie を使う段階になったら <code>php artisan config:publish cors</code> で設定ファイルを出し、<code>supports_credentials</code> を有効にした上で<strong>オリジンを <code>*</code> から実際のドメインに絞る</strong>必要がある（この2つは併用できない）。</p>
+  </section>
+
+  <!-- ================================================== 7 -->
+  <section id="s7">
+    <h2 data-sec="§07">起動に失敗したとき</h2>
+    <p class="lede">ページ一覧が無ければビューアは成立しない。中途半端に起動させない。</p>
+
+<pre><span class="k">async function</span> init() {
+  document.documentElement.style.setProperty(<span class="s">'--flip-duration'</span>, <span class="s">`${CONFIG.animationMs}ms`</span>);
+
+  el.spinner.hidden = <span class="k">false</span>;
+  <span class="k">try</span> {
+    <span class="k">const</span> book = <span class="k">await</span> fetchBook();        <span class="c">// これが無いと何も表示できない</span>
+    <span class="k">if</span> (book.title) {
+      el.bookTitle.textContent = book.title;
+      document.title = book.title;
+    }
+  } <span class="k">catch</span> (e) {
+    showFatal(<span class="s">`書誌情報を取得できませんでした: ${e.message}`</span>);
+    <span class="k">return</span>;                              <span class="c">// bindEvents() を呼ばずに抜ける</span>
+  }
+  el.spinner.hidden = <span class="k">true</span>;
+
+  <span class="c">// ... 以降は Step.01 のまま</span>
+}</pre>
+
+    <p><code>bindEvents()</code> の手前で <code>return</code> しているのがポイント。<strong>操作だけ効いて絵が出ない、という状態を作らない。</strong> 空の <code>&lt;img&gt;</code> をめくり続けられるより、理由が書いてある方が調べやすい。</p>
+
+    <p>メッセージは <code>.fatal</code> の表示に加えて <code>#liveRegion</code>（<code>aria-live="polite"</code>）にも流し、<code>console.error</code> にも出している。読み上げ環境でも、DevTools を開いている人にも失敗が伝わる。</p>
+
+    <div class="note note--warn">
+      <span class="note__label">スピナーは必ず消す</span>
+      <p><code>showFatal()</code> の先頭で <code>el.spinner.hidden = true</code> にしている。ここを忘れると、<strong>エラーメッセージの上でスピナーが回り続ける</strong>という最悪の画面になる。「読み込み中」と「失敗」は排他。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 8 -->
+  <section id="s8">
+    <h2 data-sec="§08">動作確認</h2>
+
+<pre>docker compose up -d --build</pre>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>URL</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td><code>localhost:8080</code></td><td>ビューア</td></tr>
+          <tr><td><code>localhost:8000/api/books/sample</code></td><td>書誌情報 + ページ一覧</td></tr>
+          <tr><td><code>localhost:8082/books/sample/</code></td><td>画像一覧 (autoindex)</td></tr>
+          <tr><td><code>localhost:8081</code></td><td>このドキュメント</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+<pre><span class="c"># API が JSON を返すか</span>
+curl -s localhost:8000/api/books/sample | jq <span class="s">'.data.total_pages, .data.pages[0].url'</span>
+
+<span class="c"># キャッシュヘッダが1行で出ているか / SVG が gzip されているか</span>
+curl -sI localhost:8082/books/sample/page-01.svg | grep -i <span class="s">'cache-control'</span>
+curl -sI -H <span class="s">'Accept-Encoding: gzip'</span> localhost:8082/books/sample/page-01.svg | grep -i <span class="s">'content-encoding'</span>
+
+<span class="c"># 存在しない slug が HTML ではなく JSON の 404 になるか</span>
+curl -s localhost:8000/api/books/nope | head -c 80
+
+<span class="c"># 画像以外が配られないか (404 が返るのが正しい)</span>
+curl -s -o /dev/null -w <span class="s">'%{http_code}\n'</span> localhost:8082/nginx.conf</pre>
+
+    <div class="note note--warn">
+      <span class="note__label">未確認</span>
+      <p>ブラウザでの目視確認（めくり動作・書名の反映・API 停止時の <code>.fatal</code> 表示）は行えていない。<code>docker compose stop backend</code> でエラー表示も一緒に確認できる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 9 -->
+  <section id="s9">
+    <h2 data-sec="§09">ハマりどころ</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>症状</th><th>原因</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>画像だけ表示されない</td>
+            <td><code>CDN_BASE_URL</code> がコンテナ名 (<code>http://cdn</code>) になっている。この URL を叩くのはブラウザなので、ホストから見えるアドレスが要る（→ <a href="#s2">§02</a>）</td>
+          </tr>
+          <tr>
+            <td>画像を差し替えても反映されない</td>
+            <td><code>immutable</code> が効いている。<strong>これは想定どおりの動作。</strong> <code>updated_at</code> を更新して <code>?v=</code> を回す（→ <a href="#s4">§04</a>）</td>
+          </tr>
+          <tr>
+            <td>逆に毎回取りに来てしまう</td>
+            <td><code>updated_at</code> を <code>now()</code> のような動的な値にしている。<code>?v=</code> はリクエストごとに変わってはいけない</td>
+          </tr>
+          <tr>
+            <td><code>Cache-Control</code> が2行返る</td>
+            <td><code>expires</code> と <code>add_header Cache-Control</code> の併用（→ <a href="#s4">§04</a>）</td>
+          </tr>
+          <tr>
+            <td>fetch が CORS で弾かれる</td>
+            <td>パスが <code>/api/</code> 配下から外れている。既定の CORS 設定は <code>paths: ['api/*']</code> にしか効かない</td>
+          </tr>
+          <tr>
+            <td>404 のときにフロントが JSON パースエラーで落ちる</td>
+            <td><code>shouldRenderJsonWhen</code> が外れて HTML エラーページが返っている（→ <a href="#s3">§03</a>）</td>
+          </tr>
+          <tr>
+            <td><code>total_pages</code> と実際の画像枚数がずれる</td>
+            <td><code>BOOKS</code> の <code>pages</code> 配列と <code>cdn/public/books/{slug}/</code> の中身は別管理。<code>total_pages</code> は配列の <code>count()</code> なので、配列に足して画像を置き忘れると 404 の <code>&lt;img&gt;</code> になる</td>
+          </tr>
+          <tr>
+            <td>backend コンテナが起動しない</td>
+            <td><code>./backend:/app</code> を bind mount しているので <code>vendor/</code> はホスト側のものが使われる。ホストで <code>composer install</code> が済んでいる必要がある</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================== 10 -->
+  <section id="s10">
+    <h2 data-sec="§10">積み残し</h2>
+    <p class="lede">動いてはいるが、次に触るときに片付けるもの。</p>
+
+    <ul>
+      <li><code>frontend/public/assets/pages/*.svg</code> が<strong>参照されないまま残っている</strong>。画像は <code>cdn/public/</code> に複製する形で追加したため、フロント側の10枚は現在デッドファイル</li>
+      <li><code>backend/</code> に <code>laravel new</code> の雛形がそのまま入っている（<code>User</code> モデル、<code>welcome.blade.php</code>、<code>vite.config.js</code>、Laravel の <code>README.md</code>）。API しか使わないので整理の余地がある</li>
+      <li><code>artisan serve</code> はシングルプロセスの開発用サーバ。本番構成では php-fpm + nginx（または Octane）に差し替える</li>
+      <li>書籍データが PHP の定数。<code>BOOKS</code> を Eloquent に置き換えるのが次の作業</li>
+    </ul>
+
+    <h3>次のステップ</h3>
+    <ul>
+      <li>MySQL の追加と <code>books</code> / <code>books_pages</code> テーブルの作成</li>
+      <li>書影・書籍一覧ページ</li>
+      <li>しおりのサーバ保存（<code>saveProgress()</code> / <code>loadProgress()</code> を API 呼び出しに差し替え）</li>
+    </ul>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">
+    ebook.furusawa.work — Step.02 / backend + cdn<br>
+    Laravel 13.32 · PHP 8.4 · nginx:1.27-alpine
+  </p>
+
+</div>
+</body>
+</html>
