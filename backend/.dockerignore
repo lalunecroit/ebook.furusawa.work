@@ -1,0 +1,9 @@
+# vendor はホスト側を bind mount して使う
+vendor/
+node_modules/
+.env
+.git/
+.dockerignore
+Dockerfile
+storage/logs/*
+tests/
