@@ -1,0 +1,17 @@
+# ローカル開発用。将来 backend サービスをここに足していく。
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    volumes:
+      # 公開ディレクトリを丸ごと1つだけマウントする。
+      # サブディレクトリを個別にマウントすると Docker Desktop 側で
+      # マウントが外れ、中身が空に見えることがあるため。
+      - ./frontend/public:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
+  # backend:
+  #   build: ./backend
+  #   ports:
+  #     - "8000:8000"

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>電子書籍ビューア | ebook.furusawa.work</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="reader" id="reader">
+
+  <!-- ============ ヘッダー ============ -->
+  <header class="bar bar--top">
+    <h1 class="bar__title" id="bookTitle">Docker で作る電子書籍サービス</h1>
+    <div class="bar__tools">
+      <button class="iconbtn" type="button" data-action="toggle-direction"
+              aria-label="綴じ方向を切り替え" title="綴じ方向 (左綴じ / 右綴じ)">
+        <span id="directionLabel">左綴じ</span>
+      </button>
+      <button class="iconbtn" type="button" data-action="toggle-fullscreen"
+              aria-label="全画面表示" title="全画面 (F)">⛶</button>
+    </div>
+  </header>
+
+  <!-- ============ 本体 (ページ表示エリア) ============ -->
+  <!--
+    .stage        : 中央寄せ + 3D の遠近感 (perspective) を与える親
+    .book         : ページ1枚分の矩形。aspect-ratio で比率を固定
+    #pageUnder    : 背面レイヤ。めくった先(or 元)のページを敷いておく
+    #sheet        : 手前のレイヤ。これだけが rotateY で回転する「紙」
+  -->
+  <main class="stage" id="stage">
+    <button class="nav nav--left" type="button" data-nav="left" aria-label="左のページへ">
+      <span class="nav__arrow">‹</span>
+    </button>
+
+    <div class="book" id="book">
+      <img class="page" id="pageUnder" alt="" draggable="false">
+      <div class="sheet" id="sheet">
+        <img class="page" id="pageFlip" alt="" draggable="false">
+        <div class="sheet__shade" id="sheetShade" aria-hidden="true"></div>
+      </div>
+      <div class="book__spinner" id="spinner" hidden></div>
+    </div>
+
+    <button class="nav nav--right" type="button" data-nav="right" aria-label="右のページへ">
+      <span class="nav__arrow">›</span>
+    </button>
+  </main>
+
+  <!-- ============ フッター (シークバー / ページ番号) ============ -->
+  <footer class="bar bar--bottom">
+    <input class="seek" id="seek" type="range" min="1" max="1" value="1" step="1"
+           aria-label="ページを移動">
+    <div class="pager">
+      <span class="pager__current" id="pagerCurrent">1</span>
+      <span class="pager__sep">/</span>
+      <span class="pager__total" id="pagerTotal">10</span>
+    </div>
+  </footer>
+
+  <!-- スクリーンリーダー向けの読み上げ領域 -->
+  <p class="visually-hidden" id="liveRegion" role="status" aria-live="polite"></p>
+</div>
+
+<script src="js/reader.js"></script>
+</body>
+</html>
