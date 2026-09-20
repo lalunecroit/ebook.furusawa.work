@@ -1,0 +1,268 @@
+/* ==========================================================================
+   電子書籍ビューア スタイル
+   構成:
+     1. デザイントークン (色・サイズ)
+     2. ベース
+     3. バー (ヘッダー/フッター)
+     4. ステージとページめくり ← ここがアニメーションの本体
+     5. ナビゲーション
+     6. レスポンシブ
+   ========================================================================== */
+
+/* -------------------------------------------------- 1. トークン */
+:root {
+  --bg: #2a2d31;
+  --bg-bar: rgba(20, 22, 25, 0.92);
+  --fg: #e8eaed;
+  --muted: #9aa4af;
+  --accent: #6ea0ff;
+  --page-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+
+  /* めくりアニメーションの長さ。JS 側 CONFIG.animationMs と必ず揃える */
+  --flip-duration: 600ms;
+  --bar-height: 52px;
+}
+
+/* -------------------------------------------------- 2. ベース */
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  overflow: hidden;              /* ページ全体はスクロールさせない */
+  -webkit-text-size-adjust: 100%;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.reader {
+  display: grid;
+  grid-template-rows: var(--bar-height) 1fr var(--bar-height);
+  height: 100dvh;                /* モバイルのURLバーを考慮した実高さ */
+}
+
+/* -------------------------------------------------- 3. バー */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: var(--bg-bar);
+  backdrop-filter: blur(8px);
+  z-index: 30;                   /* めくり中の紙より手前に置く */
+}
+
+.bar--top { border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.bar--bottom { border-top: 1px solid rgba(255, 255, 255, 0.08); }
+
+.bar__title {
+  flex: 1;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar__tools { display: flex; gap: 8px; }
+
+.iconbtn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.iconbtn:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--accent); }
+.iconbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* シークバー */
+.seek {
+  flex: 1;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.seek:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+.pager {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pager__current { color: var(--fg); font-weight: 600; }
+.pager__sep { margin: 0 4px; }
+
+/* -------------------------------------------------- 4. ステージ / めくり */
+.stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  min-height: 0;                 /* grid の子がはみ出さないように */
+
+  /* 3D の奥行き。値が小さいほどパースが強くなる */
+  perspective: 2400px;
+  perspective-origin: 50% 50%;
+
+  touch-action: pan-y;           /* 横スワイプは JS 側で処理する */
+  user-select: none;
+}
+
+/* ページ1枚分の枠。高さ基準で幅が決まる */
+.book {
+  position: relative;
+  height: 100%;
+  aspect-ratio: 800 / 1131;      /* ダミー画像と同じ比率 */
+  max-width: 100%;
+  transform-style: preserve-3d;
+  box-shadow: var(--page-shadow);
+  background: #fff;
+  border-radius: 2px;
+}
+
+/* 背面レイヤと紙のレイヤは同じ位置に重ねる */
+.page {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 2px;
+  -webkit-user-drag: none;
+}
+
+/*
+  #pageUnder: 常に表示しておく背面レイヤ。
+  静止時は #sheet と同じページを表示しているので、紙が回り終わって
+  角度を 0 に戻す瞬間にも下地が見えていて、チラつきが起きない。
+*/
+#pageUnder { z-index: 1; }
+
+/*
+  #sheet: 実際に回転する「紙」。
+  transform-origin を綴じ側(背表紙)に置くことで、本の綴じ目を軸に回る。
+  JS が .is-animating を付け外しして transition の ON/OFF を切り替える。
+*/
+.sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  transform-origin: left center;     /* 既定は左綴じ。JS が書き換える */
+  transform: rotateY(0deg);
+  backface-visibility: hidden;       /* 90度を超えると裏面になり消える */
+  -webkit-backface-visibility: hidden;
+  will-change: transform;
+}
+
+.sheet.is-animating {
+  transition: transform var(--flip-duration) cubic-bezier(0.33, 0, 0.2, 1);
+}
+
+/* めくり中に濃くなる影。紙が起き上がる立体感を出す */
+.sheet__shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(to right, rgba(0,0,0,0.45), rgba(0,0,0,0) 40%);
+  border-radius: 2px;
+}
+.sheet.is-shaded .sheet__shade { opacity: 1; }
+.sheet.is-animating .sheet__shade {
+  transition: opacity calc(var(--flip-duration) / 2) ease-out;
+}
+
+/* 右綴じ時は影の向きも反転 */
+.reader[data-direction="rtl"] .sheet__shade {
+  background: linear-gradient(to left, rgba(0,0,0,0.45), rgba(0,0,0,0) 40%);
+}
+
+/* 読み込み中インジケータ */
+.book__spinner {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 32px; height: 32px;
+  margin: -16px 0 0 -16px;
+  z-index: 3;
+  border: 3px solid rgba(0, 0, 0, 0.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* -------------------------------------------------- 5. ナビゲーション */
+.nav {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 22%;
+  max-width: 140px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.nav--left { left: 0; }
+.nav--right { right: 0; }
+
+.stage:hover .nav { opacity: 0.55; }
+.nav:hover { opacity: 1 !important; }
+.nav:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: -4px; }
+
+.nav[disabled] { opacity: 0 !important; cursor: default; pointer-events: none; }
+
+.nav__arrow {
+  display: grid;
+  place-items: center;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 28px;
+  line-height: 1;
+}
+
+/* -------------------------------------------------- 6. レスポンシブ / 配慮 */
+@media (max-width: 640px) {
+  .stage { padding: 8px; }
+  .nav__arrow { width: 36px; height: 36px; font-size: 22px; }
+  .bar { padding: 0 10px; }
+  .bar__title { font-size: 0.85rem; }
+  /* タッチ端末では常時うっすら出しておく */
+  .nav { opacity: 0.35; }
+}
+
+/* アニメーションを減らす設定の利用者には即時切り替え */
+@media (prefers-reduced-motion: reduce) {
+  :root { --flip-duration: 1ms; }
+  .sheet.is-animating .sheet__shade { transition: none; }
+  .book__spinner { animation-duration: 2s; }
+}
