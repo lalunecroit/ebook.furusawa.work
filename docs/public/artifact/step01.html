@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ページめくりの実装ノート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / frontend</div>
+    <h1>ページめくりの実装ノート</h1>
+    <p class="tagline">2枚のレイヤと <code>rotateY</code> だけで本をめくる。その仕組みと、あとから手を入れるための地図。</p>
+    <div class="meta">
+      <span><b>対象</b> frontend/public/js/reader.js</span>
+      <span><b>依存</b> なし (Vanilla JS)</span>
+      <span><b>配信</b> nginx : 8080</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s1">全体の考え方</a></li>
+      <li><a href="#s2">ファイル構成</a></li>
+      <li><a href="#s3">レイヤ構造</a></li>
+      <li><a href="#s4">めくりの原理</a></li>
+      <li><a href="#s5">goTo() の手順</a></li>
+      <li><a href="#s6">リフローが要る理由</a></li>
+      <li><a href="#s7">綴じ方向の切り替え</a></li>
+      <li><a href="#s8">入力ハンドリング</a></li>
+      <li><a href="#s9">改造レシピ</a></li>
+      <li><a href="#s10">ハマりどころ</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">全体の考え方</h2>
+    <p class="lede">状態を1か所に集め、画面はその写像として作る。これだけ守れば改造しても壊れにくい。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>入力</b><span>ボタン / キー / スワイプ / シークバー</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>state</b><span>current / direction / isFlipping</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>render()</b><span>state を見て UI を合わせる</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>DOM</b><span>ページ番号・シークバー・ナビ</span></div>
+    </div>
+
+    <p>入力ハンドラは <code>state</code> を書き換えて <code>render()</code> を呼ぶだけ。DOM を直接いじる処理を <code>render()</code> に集約してあるので、「どこで画面が変わるのか」を探す範囲が一箇所で済む。</p>
+
+    <div class="note">
+      <span class="note__label">例外はひとつ</span>
+      <p>ページ画像の差し替えだけは <code>goTo()</code> が直接行う。アニメーションの途中で <code>&lt;img&gt;</code> の <code>src</code> を差し替えるタイミングが、描画の都合と強く結びついているため。逆に言うと <strong>DOM を直接触っているのは <code>render()</code> と <code>goTo()</code> / <code>finishFlip()</code> だけ</strong>。</p>
+    </div>
+
+    <p>状態は3つしか持っていない。派生値（「次のページはあるか」など）は都度計算する方針にしてあるので、状態の同期ズレが起きない。</p>
+<pre><span class="c">// 「今の画面を復元するのに必要な最小限」だけを置く</span>
+<span class="k">const</span> state = {
+  current:    <span class="s">1</span>,      <span class="c">// 現在ページ (1 始まり)</span>
+  direction:  <span class="s">'ltr'</span>,  <span class="c">// 綴じ方向。実行中に切り替えられる</span>
+  isFlipping: <span class="k">false</span>,  <span class="c">// めくり中は操作を受け付けない</span>
+};</pre>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">ファイル構成</h2>
+    <p class="lede">バックエンドを足すときは <code>backend/</code> を並べ、<code>compose.yaml</code> にサービスを追加する想定。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>パス</th><th>役割</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>frontend/public/index.html</code></td><td>DOM の骨組み。レイヤ2枚とツールバー、シークバー</td></tr>
+          <tr><td><code>frontend/public/css/style.css</code></td><td>見た目と<strong>アニメーションそのもの</strong>。<code>transition</code> は CSS 側にある</td></tr>
+          <tr><td><code>frontend/public/js/reader.js</code></td><td>状態管理と、回転角の付け外し。10節構成でコメント済み</td></tr>
+          <tr><td><code>frontend/public/assets/pages/</code></td><td><code>page-01.svg</code> … <code>page-10.svg</code>。本番では実画像に差し替える</td></tr>
+          <tr><td><code>tools/generate_dummy_pages.py</code></td><td>ダミーページ生成器。枚数やデザインを変えたいときに実行</td></tr>
+          <tr><td><code>frontend/nginx.conf</code></td><td>画像は7日キャッシュ、HTML/CSS/JS は <code>no-cache</code></td></tr>
+          <tr><td><code>compose.yaml</code></td><td><code>public/</code> を丸ごと1つだけバインドマウント。編集 → リロードで即反映</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>公開されるのは <code>frontend/public/</code> 配下だけ。<code>Dockerfile</code> や <code>nginx.conf</code>・<code>tools/</code> は その外に置いてあるので、Web からは見えない。</p>
+
+    <p><strong>アニメーションの実体は CSS にある</strong>という点が重要。JavaScript がやっているのは「回転角の数値を入れ替える」ことだけで、その間を補間しているのは CSS の <code>transition</code>。JS 側でコマ送りしているわけではないので、<code>requestAnimationFrame</code> ループは存在しない。</p>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">レイヤ構造</h2>
+    <p class="lede">重なっている <code>&lt;img&gt;</code> は2枚だけ。10ページあっても DOM は増えない。</p>
+
+<pre>.book                     <span class="c">← ページ1枚分の矩形 (aspect-ratio で比率固定)</span>
+├─ #pageUnder             <span class="c">← 下地。常に表示されている</span>
+└─ #sheet                 <span class="c">← 回転する「紙」。これだけが動く</span>
+   ├─ #pageFlip           <span class="c">← 紙の表面に貼る画像</span>
+   └─ #sheetShade         <span class="c">← めくり中に濃くなる影</span></pre>
+
+    <h3>静止しているときは2枚とも同じページ</h3>
+    <p>ここが地味だが効いている設計。下地と紙に同じ絵を表示しておくと、めくり終わりに紙の角度を <code>180deg</code> から <code>0deg</code> へ戻す瞬間にも、下にすでに正しい絵があるのでチラつきが起きない。</p>
+    <p>「紙を隠す → 絵を差し替える → 紙を出す」といった順序制御や、画像のデコード完了待ちが一切不要になる。</p>
+
+    <div class="note">
+      <span class="note__label">キーとなる CSS</span>
+      <p><code>backface-visibility: hidden</code> ── 紙が90度を超えると裏返しになり、自動的に見えなくなる。「いつ紙を消すか」を JS で判定する必要がない。</p>
+      <p><code>transform-origin</code> ── 回転の軸。これを綴じ目（左綴じなら左端）に置くことで、本の背表紙を軸に回る動きになる。中央のままだと紙が空中で回転してしまう。</p>
+      <p><code>perspective: 2400px</code> ── <code>.stage</code> 側に指定。これが無いと <code>rotateY</code> は単なる横方向の縮小に見える。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">めくりの原理</h2>
+    <p class="lede">綴じ目を軸に紙を <code>0deg</code> → <code>-180deg</code> まで倒す。90度を境に紙が消え、下地が現れる。</p>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 700 250" role="img" aria-label="ページが0度・60度・135度と倒れていく様子の図">
+          <!-- panel 1 : 0deg -->
+          <text x="40" y="20" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--accent)">rotateY(0deg)</text>
+          <rect x="40" y="34" width="120" height="162" fill="var(--surface-2)" stroke="var(--rule-2)" stroke-width="1"/>
+          <rect x="40" y="34" width="120" height="162" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <line x1="40" y1="30" x2="40" y2="202" stroke="var(--ink)" stroke-width="3"/>
+          <text x="100" y="120" font-size="12" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans JP, sans-serif">現在ページ</text>
+          <text x="100" y="220" font-size="11" text-anchor="middle" fill="var(--ink-3)" font-family="IBM Plex Sans JP, sans-serif">紙が全面を覆う</text>
+
+          <!-- panel 2 : 60deg -->
+          <text x="280" y="20" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--accent)">rotateY(-60deg)</text>
+          <rect x="280" y="34" width="120" height="162" fill="var(--surface-2)" stroke="var(--rule-2)" stroke-width="1"/>
+          <text x="352" y="120" font-size="11" text-anchor="middle" fill="var(--ink-2)" font-family="IBM Plex Sans JP, sans-serif">遷移先</text>
+          <path d="M280 34 L340 44 L340 186 L280 196 Z" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <path d="M280 34 L340 44 L340 186 L280 196 Z" fill="var(--ink)" fill-opacity="0.16"/>
+          <line x1="280" y1="30" x2="280" y2="202" stroke="var(--ink)" stroke-width="3"/>
+          <text x="340" y="220" font-size="11" text-anchor="middle" fill="var(--ink-3)" font-family="IBM Plex Sans JP, sans-serif">下地が見え始める</text>
+
+          <!-- panel 3 : 135deg -->
+          <text x="520" y="20" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--accent)">rotateY(-135deg)</text>
+          <rect x="520" y="34" width="120" height="162" fill="var(--surface-2)" stroke="var(--rule-2)" stroke-width="1"/>
+          <text x="580" y="120" font-size="12" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans JP, sans-serif">遷移先</text>
+          <path d="M520 34 L466 44 L466 186 L520 196 Z" fill="none" stroke="var(--rule-2)" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <line x1="520" y1="30" x2="520" y2="202" stroke="var(--ink)" stroke-width="3"/>
+          <text x="493" y="120" font-size="10" text-anchor="middle" fill="var(--ink-3)" font-family="IBM Plex Sans JP, sans-serif">裏面</text>
+          <text x="580" y="220" font-size="11" text-anchor="middle" fill="var(--ink-3)" font-family="IBM Plex Sans JP, sans-serif">紙は消えている</text>
+
+          <!-- spine label -->
+          <text x="40" y="243" font-size="10" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace">▌= transform-origin (綴じ目)</text>
+        </svg>
+      </div>
+      <figcaption>図 1 — 左綴じで「次のページへ」進む場合。90度を超えた紙は backface-visibility により描画されない。</figcaption>
+    </figure>
+
+    <h3>進む / 戻るは同じ仕組みの裏返し</h3>
+    <p>「紙に貼る絵」と「回転の開始・終了角」を入れ替えるだけで、戻る動きになる。分岐はこの2点しかない。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th></th><th>下地 <code>#pageUnder</code></th><th>紙 <code>#pageFlip</code></th><th>開始角</th><th>終了角</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>進む</strong></td>
+            <td>遷移先を敷く</td>
+            <td>現在ページ（そのまま）</td>
+            <td><code>0deg</code></td>
+            <td><code>-180deg</code></td>
+          </tr>
+          <tr>
+            <td><strong>戻る</strong></td>
+            <td>現在ページ（そのまま）</td>
+            <td>遷移先を貼る</td>
+            <td><code>-180deg</code></td>
+            <td><code>0deg</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>戻るときは、紙が <code>-180deg</code>（＝裏返しで不可視）の状態から起き上がってくる。90度を切ったところで表面が現れ、下地の現在ページに覆いかぶさる ── 実際に前のページをめくり戻す動きになる。</p>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">goTo() の手順</h2>
+    <p class="lede">ページ遷移はすべてこの関数を通る。手順は4つで、順番に意味がある。</p>
+
+    <ol class="steps">
+      <li>
+        <h3>絵を決める</h3>
+        <p>進むなら下地に遷移先を、戻るなら紙に遷移先を貼る。<code>showSpinnerUntilLoaded()</code> で、まだ読み込めていない場合だけスピナーを出す。</p>
+      </li>
+      <li>
+        <h3><code>transition</code> を切って開始角に置く</h3>
+        <p><code>.is-animating</code> クラスを外した状態で <code>transform</code> を設定する。このクラスが <code>transition</code> を持っているので、外れている間の変更は瞬時に反映される。</p>
+      </li>
+      <li>
+        <h3>リフローで確定させる</h3>
+        <p><code>forceReflow()</code> を呼ぶ。これが無いとアニメーションが再生されない（→ <a href="#s6">§06</a>）。</p>
+      </li>
+      <li>
+        <h3><code>transition</code> を入れて終了角へ</h3>
+        <p><code>.is-animating</code> を付けてから <code>transform</code> を書き換える。あとは CSS が補間する。<code>animationMs</code> 後に <code>finishFlip()</code> が走り、紙を <code>0deg</code> に戻して両レイヤを遷移先に揃える。</p>
+      </li>
+    </ol>
+
+<pre><span class="c">// ② transition を切った状態で開始角度に置く</span>
+el.sheet.classList.remove(<span class="s">'is-animating'</span>);
+el.sheet.style.transformOrigin = spineOrigin();
+setSheetAngle(forward ? <span class="s">0</span> : angle);
+
+forceReflow(el.sheet);   <span class="c">// ③ ここまでを確定させる</span>
+
+<span class="c">// ④ transition を入れて終了角度へ</span>
+el.sheet.classList.add(<span class="s">'is-animating'</span>);
+setSheetAngle(forward ? angle : <span class="s">0</span>);</pre>
+
+    <div class="note note--warn">
+      <span class="note__label">transitionend ではなく setTimeout</span>
+      <p>後始末は <code>transitionend</code> ではなく <code>setTimeout</code> で予約している。タブが裏に回るなどで <code>transitionend</code> が発火しないことがあり、そうなると <code>isFlipping</code> が <code>true</code> のまま固まってビューアが操作不能になるため。タイマーなら必ず終わる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 6 -->
+  <section id="s6">
+    <h2 data-sec="§06">リフローが要る理由</h2>
+    <p class="lede">CSS transition の再生でいちばん踏みやすい落とし穴。</p>
+
+    <p>ブラウザはスタイルの変更をすぐには反映せず、同じフレーム内の変更をまとめてから適用する。そのため、以下のように書くと <strong>開始角が無かったこと</strong>にされる。</p>
+
+<pre><span class="c">// ✗ アニメーションしない</span>
+sheet.style.transform = <span class="s">'rotateY(-180deg)'</span>;  <span class="c">// 開始角</span>
+sheet.classList.add(<span class="s">'is-animating'</span>);
+sheet.style.transform = <span class="s">'rotateY(0deg)'</span>;     <span class="c">// 終了角</span>
+<span class="c">// → ブラウザには「0deg のまま何も変わらなかった」としか見えない</span></pre>
+
+    <p>間に一度レイアウト計算を強制すると、開始角がスタイルとして確定し、そこからの変化として <code>transition</code> が再生される。<code>offsetWidth</code> の<strong>読み取り</strong>がそれを引き起こす。</p>
+
+<pre><span class="c">// ○ 読み取りがレイアウトを強制的に確定させる</span>
+<span class="k">function</span> forceReflow(node) {
+  <span class="k">void</span> node.offsetWidth;
+}</pre>
+
+    <p><code>void</code> を付けているのは「値は使わない、副作用だけが目的」だと明示するため。これが無いと単なる未使用の式に見え、Linter や将来の自分に消されかねない。</p>
+  </section>
+
+  <!-- ================================================== 7 -->
+  <section id="s7">
+    <h2 data-sec="§07">綴じ方向の切り替え</h2>
+    <p class="lede">左綴じ（横書き）と右綴じ（縦書き・マンガ）を実行中に切り替える。分岐は3つの関数に閉じ込めてある。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>関数</th><th>ltr（左綴じ）</th><th>rtl（右綴じ）</th><th>効果</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>spineOrigin()</code></td><td><code>left center</code></td><td><code>right center</code></td><td>回転軸の位置</td></tr>
+          <tr><td><code>flipAngle()</code></td><td><code>-180</code></td><td><code>180</code></td><td>倒れる向き</td></tr>
+          <tr><td><code>deltaForSide()</code></td><td>右＝次へ</td><td>左＝次へ</td><td>タップ／矢印キーの対応</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>影のグラデーションの向きだけは CSS 側で持っている。<code>render()</code> が <code>&lt;div id="reader"&gt;</code> に <code>data-direction</code> を書き込み、<code>[data-direction="rtl"]</code> のルールで反転させる。</p>
+
+    <div class="note">
+      <span class="note__label">分岐を増やしたくなったら</span>
+      <p>「左綴じのときだけ〜」という <code>if</code> をハンドラ側に書き足すのではなく、この3関数のどれかを拡張する。分岐が散らばると、綴じ方向を切り替えたときだけ挙動がおかしい、という追いにくいバグになる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 8 -->
+  <section id="s8">
+    <h2 data-sec="§08">入力ハンドリング</h2>
+    <p class="lede">すべての入力は最終的に <code>move(delta)</code> か <code>goTo(page)</code> に合流する。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>操作</th><th>動作</th><th>備考</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>画面左右のタップ</td><td>前 / 次</td><td>綴じ方向で入れ替わる</td></tr>
+          <tr><td><code>←</code> <code>→</code></td><td>前 / 次</td><td>綴じ方向で入れ替わる</td></tr>
+          <tr><td><code>PageUp</code> <code>PageDown</code></td><td>前 / 次</td><td>綴じ方向によらず固定</td></tr>
+          <tr><td><code>Space</code></td><td>次（<code>Shift</code>で前）</td><td></td></tr>
+          <tr><td><code>Home</code> <code>End</code></td><td>最初 / 最後</td><td></td></tr>
+          <tr><td><code>F</code></td><td>全画面</td><td></td></tr>
+          <tr><td>横スワイプ</td><td>前 / 次</td><td>50px 以上かつ縦移動より大きいときのみ</td></tr>
+          <tr><td>シークバー</td><td>任意のページへ</td><td>ドラッグ中は <code>animate: false</code> で即時表示</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>スワイプは <code>touchstart</code> ではなく <strong>Pointer Events</strong> を使っている。マウス・タッチ・ペンを同じコードで扱えるため。<code>.stage</code> には <code>touch-action: pan-y</code> を指定し、横方向のジェスチャだけを JS に回している。</p>
+
+    <div class="note">
+      <span class="note__label">誤爆を防いでいる2つの条件</span>
+      <p><code>Math.abs(dx) &lt; threshold</code> で小さな指ブレを無視し、<code>Math.abs(dx) &lt; Math.abs(dy)</code> で縦スクロール目的の動きを除外している。片方だけだと、縦に払っただけでページがめくれる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 9 -->
+  <section id="s9">
+    <h2 data-sec="§09">改造レシピ</h2>
+    <p class="lede">よくやる変更と、触るべき場所。</p>
+
+    <div class="recipes">
+
+      <div class="recipe">
+        <h3>めくる速さを変える</h3>
+        <p><code>CONFIG.animationMs</code> だけ変えればよい。起動時に <code>init()</code> が CSS 変数 <code>--flip-duration</code> を上書きするので、CSS 側を直す必要はない。</p>
+<pre><span class="c">// frontend/public/js/reader.js</span>
+animationMs: <span class="s">400</span>,   <span class="c">// 既定 600</span></pre>
+      </div>
+
+      <div class="recipe">
+        <h3>ページ数・画像を差し替える</h3>
+        <p><code>totalPages</code> と <code>pageSrc</code> の2つ。JPEG にしても拡張子を変えるだけで済む。</p>
+<pre>totalPages: <span class="s">240</span>,
+pageSrc: (n) => <span class="s">`assets/pages/page-${String(n).padStart(3, '0')}.jpg`</span>,</pre>
+      </div>
+
+      <div class="recipe">
+        <h3>バックエンドから取得する</h3>
+        <p><code>pageSrc</code> を API のパスに向け、<code>init()</code> の冒頭で書誌情報を取って <code>CONFIG</code> を上書きする。<code>totalPages</code> が確定してから <code>render()</code> を呼ぶ順序だけ守ればよい。</p>
+<pre><span class="k">async function</span> init() {
+  <span class="k">const</span> book = <span class="k">await</span> fetch(<span class="s">'/api/books/001'</span>).then(r => r.json());
+  CONFIG.totalPages = book.pageCount;
+  CONFIG.pageSrc = (n) => <span class="s">`/api/books/001/pages/${n}`</span>;
+  CONFIG.direction = book.direction;
+  <span class="c">// ... 以降は現状のまま</span>
+}</pre>
+      </div>
+
+      <div class="recipe">
+        <h3>見開き表示にする</h3>
+        <p>いちばん大きい改造。<code>state.current</code> を「左ページ番号」と読み替え、<code>move()</code> の増分を 2 にし、<code>.book</code> の <code>aspect-ratio</code> を倍にして <code>&lt;img&gt;</code> を左右2枚ずつ持つ。<strong>レイヤの2枚構造と回転の仕組みはそのまま使える</strong> ── 紙が片側だけになる分、<code>transform-origin</code> は常に見開きの中央になる。</p>
+      </div>
+
+      <div class="recipe">
+        <h3>しおりをサーバに保存する</h3>
+        <p><code>saveProgress()</code> / <code>loadProgress()</code> の中身を差し替えるだけ。呼び出し側（<code>afterPageChange()</code> と <code>init()</code>）は触らない。保存は連打されるので、送信前に debounce を挟むこと。</p>
+      </div>
+
+      <div class="recipe">
+        <h3>コンソールから動かして試す</h3>
+        <p>デバッグ用に <code>window.reader</code> を生やしてある。ブラウザの DevTools からそのまま叩ける。</p>
+<pre>reader.goTo(<span class="s">5</span>);                <span class="c">// 5ページへ</span>
+reader.state;                   <span class="c">// 現在の状態</span>
+reader.CONFIG.animationMs = <span class="s">0</span>;  <span class="c">// めくりを即時に</span></pre>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================================================== 10 -->
+  <section id="s10">
+    <h2 data-sec="§10">ハマりどころ</h2>
+    <p class="lede">壊したときに真っ先に疑う場所。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>症状</th><th>原因</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>めくりの途中で絵が切り替わる</td>
+            <td><code>CONFIG.animationMs</code> と CSS の <code>--flip-duration</code> がずれている。<code>init()</code> が同期しているので、<strong>CSS を直接書き換えると逆にずれる</strong></td>
+          </tr>
+          <tr>
+            <td>アニメーションせず瞬間移動する</td>
+            <td><code>forceReflow()</code> が抜けているか、<code>.is-animating</code> を付ける順序が逆（→ <a href="#s6">§06</a>）</td>
+          </tr>
+          <tr>
+            <td>連打すると表示が壊れる</td>
+            <td><code>isFlipping</code> のガードを通らない経路を足した。新しい遷移は必ず <code>goTo()</code> 経由にする</td>
+          </tr>
+          <tr>
+            <td>紙が空中で回る</td>
+            <td><code>transform-origin</code> が中央のまま。<code>render()</code> と <code>goTo()</code> の両方で設定している</td>
+          </tr>
+          <tr>
+            <td>横に潰れるだけで立体に見えない</td>
+            <td><code>.stage</code> の <code>perspective</code> が効いていない。親子関係を変えたときに外れやすい</td>
+          </tr>
+          <tr>
+            <td>めくった瞬間に白紙が見える</td>
+            <td>プリロードが届いていない。<code>preloadRange</code> を広げるか、画像を軽くする</td>
+          </tr>
+          <tr>
+            <td>CSS/JS だけ 404 になる</td>
+            <td>bind mount が外れて、コンテナ内のディレクトリが空になっている。<code>docker compose exec frontend ls /usr/share/nginx/html</code> で確認。サブディレクトリを個別にマウントすると起きやすいので、公開ディレクトリ <code>public/</code> を1つだけマウントしている</td>
+          </tr>
+          <tr>
+            <td>編集しても古い内容が配信される</td>
+            <td>Docker Desktop の仮想 FS と nginx の <code>sendfile</code> の相性。<code>nginx.conf</code> の <code>server</code> ブロックで <code>sendfile off</code> にしてある（<code>http</code> 側に書くとベース設定と重複してエラーになる）</td>
+          </tr>
+          <tr>
+            <td>シークレットウィンドウで落ちる</td>
+            <td><code>localStorage</code> が例外を投げる。読み書きは必ず <code>try/catch</code> で包む</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="note__label">アクセシビリティも維持する</span>
+      <p><code>prefers-reduced-motion: reduce</code> のとき、CSS 側で <code>--flip-duration</code> を <code>1ms</code> にして即時切り替えにしている。アニメーション周りを触るときはこの指定を消さないこと。ページ番号の読み上げは <code>#liveRegion</code>（<code>aria-live="polite"</code>）が担当している。</p>
+    </div>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">
+    ebook.furusawa.work — frontend viewer<br>
+    Vanilla JS / nginx:1.27-alpine / no build step
+  </p>
+
+</div>
+</body>
+</html>

@@ -11,6 +11,17 @@ services:
       - ./frontend/public:/usr/share/nginx/html:ro
     restart: unless-stopped
 
+  # ドキュメント閲覧用。docs/ を読むだけなので build せず公式イメージをそのまま使う。
+  docs:
+    image: nginx:1.27-alpine
+    ports:
+      - "8081:80"
+    volumes:
+      # frontend と同じ構成。公開するのは public/ だけで、nginx.conf はその外に置く
+      - ./docs/public:/usr/share/nginx/html:ro
+      - ./docs/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+
   # backend:
   #   build: ./backend
   #   ports:
