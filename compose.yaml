@@ -32,7 +32,7 @@ services:
       - ./cdn/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
 
-  # API (PHP / Laravel)
+  # API (PHP / Laravel)。今は書籍情報をベタ書きで返すだけで DB は使わない。
   backend:
     build: ./backend
     ports:
