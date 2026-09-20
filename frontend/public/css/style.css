@@ -7,6 +7,7 @@
      4. ステージとページめくり ← ここがアニメーションの本体
      5. ナビゲーション
      6. レスポンシブ
+     7. 起動失敗の表示
    ========================================================================== */
 
 /* -------------------------------------------------- 1. トークン */
@@ -265,4 +266,22 @@ body {
   :root { --flip-duration: 1ms; }
   .sheet.is-animating .sheet__shade { transition: none; }
   .book__spinner { animation-duration: 2s; }
+}
+
+/* -------------------------------------------------- 7. 起動失敗の表示 */
+/* API から書誌情報を取れなかったときだけ出る。通常は存在しない要素 */
+.fatal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 80%;
+  margin: 0;
+  padding: 14px 18px;
+  border: 1px solid #5a3a3a;
+  border-radius: 8px;
+  background: rgba(40, 24, 24, 0.9);
+  color: #f0c9c9;
+  font-size: 14px;
+  text-align: center;
 }
