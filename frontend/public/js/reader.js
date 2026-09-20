@@ -12,7 +12,7 @@
  *   集まるので、機能追加のときに追いかける場所が減る。
  *
  * 目次
- *   1. 設定 (CONFIG)
+ *   1. 設定 (CONFIG) と書誌データの取得 (API)
  *   2. 状態 (state)
  *   3. DOM 参照
  *   4. 小さなヘルパー
@@ -27,22 +27,30 @@
 'use strict';
 
 /* ==========================================================================
- * 1. 設定
+ * 1. 設定と書誌データの取得
  * --------------------------------------------------------------------------
- * ここだけ書き換えれば大半の挙動は変えられる。
- * 将来バックエンドから書誌情報を取る場合は、この CONFIG を
- * API レスポンス (総ページ数・画像URL) で上書きする形にすると移行が楽。
+ * 総ページ数とページ画像URLはバックエンド API から取る。
+ * 画像そのものは API が返した URL (CDN) をブラウザが直接読む。
+ *
+ *   ブラウザ ──▶ API (:8000) ──▶ ページ一覧(JSON)
+ *          └──▶ CDN (:8082) ──▶ 画像
  * ========================================================================== */
 const CONFIG = {
-  /** 総ページ数 */
-  totalPages: 10,
+  /** バックエンド API。ホストが変わるのはここだけ */
+  api: {
+    base: 'http://localhost:8000/api',
+    slug: 'sample',
+  },
+
+  /** 総ページ数。起動時に API の total_pages で上書きする */
+  totalPages: 0,
 
   /**
    * ページ番号 → 画像URL の対応。
-   * 画像を JPEG に変えたり CDN に置いたりするときはこの関数だけ直す。
-   * 例) API 経由:  (n) => `/api/books/001/pages/${n}`
+   * 中身は API のレスポンス (pageUrls) なので、画像の置き場所が
+   * 変わってもフロント側は変更不要。
    */
-  pageSrc: (n) => `assets/pages/page-${String(n).padStart(2, '0')}.svg`,
+  pageSrc: (n) => pageUrls.get(n) ?? '',
 
   /** 綴じ方向 'ltr' = 左綴じ(横書き) / 'rtl' = 右綴じ(縦書き・マンガ) */
   direction: 'ltr',
@@ -59,6 +67,29 @@ const CONFIG = {
   /** しおりの保存キー。本ごとに変える想定 */
   storageKey: 'ebook:last-page:sample-001',
 };
+
+/** ページ番号 → 画像URL。API のレスポンスで埋める */
+const pageUrls = new Map();
+
+/**
+ * 書誌情報とページ一覧を API から取得して pageUrls / CONFIG.totalPages を埋める。
+ * 失敗したら例外を投げ、init() 側でエラー表示に回す。
+ */
+async function fetchBook() {
+  const url = `${CONFIG.api.base}/books/${CONFIG.api.slug}`;
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`API ${res.status} ${res.statusText}`);
+
+  const { data } = await res.json();
+
+  pageUrls.clear();
+  for (const page of data.pages) {
+    pageUrls.set(page.page_no, page.url);
+  }
+  CONFIG.totalPages = data.total_pages ?? pageUrls.size;
+
+  return data;
+}
 
 
 /* ==========================================================================
@@ -86,6 +117,7 @@ const state = {
  * ========================================================================== */
 const el = {
   reader:      document.getElementById('reader'),
+  bookTitle:   document.getElementById('bookTitle'),
   stage:       document.getElementById('stage'),
   book:        document.getElementById('book'),
   pageUnder:   document.getElementById('pageUnder'),  // 背面(下地)
@@ -453,10 +485,35 @@ function toggleFullscreen() {
 /* ==========================================================================
  * 10. 起動
  * ========================================================================== */
-function init() {
+/** 起動に失敗したときの表示。ビューアは出せないので理由だけ残す */
+function showFatal(message) {
+  el.spinner.hidden = true;
+  const box = document.createElement('p');
+  box.className = 'fatal';
+  box.textContent = message;
+  el.stage.append(box);
+  el.liveRegion.textContent = message;
+  console.error('[reader]', message);
+}
+
+async function init() {
   // CSS の --flip-duration と JS の animationMs がずれていると
   // アニメーション途中で後始末が走るので、CSS 側を JS に合わせる
   document.documentElement.style.setProperty('--flip-duration', `${CONFIG.animationMs}ms`);
+
+  // ページ画像は API から取る。これが無いと何も表示できないので先に待つ
+  el.spinner.hidden = false;
+  try {
+    const book = await fetchBook();
+    if (book.title) {
+      el.bookTitle.textContent = book.title;
+      document.title = book.title;
+    }
+  } catch (e) {
+    showFatal(`書誌情報を取得できませんでした: ${e.message}`);
+    return;
+  }
+  el.spinner.hidden = true;
 
   // しおりから復帰
   state.current = loadProgress();
