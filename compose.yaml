@@ -46,3 +46,49 @@ services:
       APP_ENV: local
       APP_DEBUG: "true"
     restart: unless-stopped
+
+  # MySQL。ローカル開発用なので認証情報はベタ書きにしている。
+  db:
+    image: mysql:8.4
+    ports:
+      # ホストから artisan migrate や GUI クライアントで直接繋ぐために公開する
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ebooks_local
+      MYSQL_USER: ebooks
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      # 名前付きボリュームに永続化する。作り直したいときは
+      # docker compose down -v でこのボリュームごと消す。
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  # DB 管理画面。db サービス専用の GUI で、アプリからは参照しない。
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    ports:
+      - "8083:80"
+    environment:
+      # 接続先は compose のサービス名で解決する
+      PMA_HOST: db
+      PMA_PORT: "3306"
+      # ローカル専用なので自動ログインにしておく。
+      # root で入りたいときはこの2行を消せばログイン画面が出る (root / root)
+      PMA_USER: ebooks
+      PMA_PASSWORD: password
+      # dump の取り込みでサイズ上限に当たらないように少し広げておく
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db-data:
