@@ -73,6 +73,18 @@ services:
       - backend
     restart: unless-stopped
 
+  # 開発用ツール (CLI)。常駐しないので profiles で通常の up からは外し、
+  # docker compose run --rm tools のように都度起動する。
+  #   docker compose run --rm tools                        サンプル画像を生成
+  #   docker compose run --rm tools php -m | grep gd       拡張の確認
+  tools:
+    build: ./tools
+    profiles: ["tools"]
+    volumes:
+      # 生成先が cdn/public/... なので、リポジトリごとマウントする
+      - .:/work
+    working_dir: /work
+
   # MySQL。ローカル開発用なので認証情報はベタ書きにしている。
   db:
     image: mysql:8.4

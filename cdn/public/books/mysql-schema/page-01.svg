@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1131" width="800" height="1131">
+  <rect width="800" height="1131" fill="#b5622a"/>
+  <rect x="70" y="70" width="660" height="991" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="2"/>
+  <text x="400" y="430" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" font-size="40" font-weight="300" fill="#ffffff" text-anchor="middle">MySQL</text>
+  <text x="400" y="510" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" font-size="56" font-weight="700" fill="#ffffff" text-anchor="middle">テーブル設計ノート</text>
+  <line x1="260" y1="560" x2="540" y2="560" stroke="#ffffff" stroke-opacity="0.6" stroke-width="2"/>
+  <text x="400" y="620" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" font-size="24" font-weight="400" fill="#ffffff" text-anchor="middle">— スキーマ編 —</text>
+  <text x="400" y="991" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" font-size="22" font-weight="400" fill="#ffffff" text-anchor="middle">furusawa.work</text>
+</svg>
