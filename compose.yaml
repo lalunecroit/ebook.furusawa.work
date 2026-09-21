@@ -76,6 +76,8 @@ services:
       # 名前付きボリュームに永続化する。作り直したいときは
       # docker compose down -v でこのボリュームごと消す。
       - db-data:/var/lib/mysql
+      # 初回起動時にだけ実行される初期化 SQL。テスト用 DB (ebooks_test) を作る。
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
       interval: 5s
