@@ -11,22 +11,20 @@ class BookApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * 2ページ持つ書籍を1冊作る。
+     *
+     * ページ番号と img_path は BookFactory::withPages() が組み立てる。
+     * 検証で値を直接突き合わせる項目 (title など) だけここで固定する。
+     */
     private function makeBook(string $code = 'sample'): Book
     {
-        $book = Book::create([
+        return Book::factory()->withPages(2)->create([
             'code' => $code,
             'title' => 'テスト書籍',
             'description' => '説明',
-            'pages_count' => 2,
             'published_at' => '2026-09-20 00:00:00',
         ]);
-
-        $book->pages()->createMany([
-            ['page_no' => 1, 'img_path' => '/books/sample/page-01.svg'],
-            ['page_no' => 2, 'img_path' => '/books/sample/page-02.svg'],
-        ]);
-
-        return $book;
     }
 
     public function test_書誌情報とページ一覧が返る(): void
@@ -96,6 +94,6 @@ class BookApiTest extends TestCase
 
         // 生存行が既にあるなら弾かれる
         $this->expectException(UniqueConstraintViolationException::class);
-        Book::create(['code' => 'sample', 'title' => '重複', 'pages_count' => 0]);
+        Book::factory()->create(['code' => 'sample']);
     }
 }
