@@ -34,14 +34,17 @@ return new class extends Migration
             // 「公開済みの本を新しい順に」が一覧の基本クエリなので索引を張る。
             $table->timestamp('published_at')->nullable()->index();
 
-            // 論理削除 (deleted_at)。Model 側で SoftDeletes を use する。
-            $table->softDeletes();
-            $table->timestamps();
-
             // 生存中 = 1 / 削除済み = NULL を deleted_at から自動導出する生成列。
             // アプリ側から値を入れる必要はなく、SoftDeletes をそのまま使える。
             $table->unsignedTinyInteger('is_active')
                 ->storedAs('CASE WHEN deleted_at IS NULL THEN 1 END');
+
+            // 論理削除 (deleted_at)。Model 側で SoftDeletes を use する。
+            $table->softDeletes();
+
+            // DB 側にも既定値を持たせ、生 SQL で入れても値が埋まるようにする。
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             // 「生存行の code は一意、削除済みは同じ code が何件でも OK」を表現する。
             //

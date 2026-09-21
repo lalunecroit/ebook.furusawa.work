@@ -29,7 +29,9 @@ return new class extends Migration
 
             // updated_at は画像URLのキャッシュバスター (?v=) の元ネタも兼ねる。
             // 画像を差し替えたらこの値が動き、URL が変わってブラウザが取り直す。
-            $table->timestamps();
+            // DB 側にも既定値を持たせ、生 SQL で差し替えても updated_at が動くようにする。
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             // 同じ本に同じページ番号は 1 つだけ。
             // ページ順の取得 (where books_id = ? order by page_no) にもこの索引が効く。
