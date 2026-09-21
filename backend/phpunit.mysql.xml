@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap-mysql.php"
          colors="true"
 >
     <testsuites>
@@ -36,7 +36,10 @@
                  docker compose exec backend php artisan test -c phpunit.mysql.xml
              接続先は開発用 (ebooks_local) とは別の ebooks_test。RefreshDatabase が
              毎回テーブルを落とすため、開発用 DB を向けてはいけない。
-             上書きの仕組みは phpunit.xml と同じで、$_SERVER ごと差し替える -->
+             上書きの仕組みは phpunit.xml と同じで、$_SERVER ごと差し替える。
+             ebooks_test が無ければ bootstrap (tests/bootstrap-mysql.php) が root で作る -->
+        <server name="DB_ROOT_USERNAME" value="root" force="true"/>
+        <server name="DB_ROOT_PASSWORD" value="root" force="true"/>
         <server name="APP_ENV" value="testing" force="true"/>
         <server name="DB_CONNECTION" value="mysql" force="true"/>
         <server name="DB_HOST" value="db" force="true"/>
