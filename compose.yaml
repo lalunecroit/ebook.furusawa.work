@@ -57,6 +57,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      # テスト用 DB などが揃ってから起動する
+      db-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   # API の前段 nginx。静的ファイルを返し、PHP は backend:9000 に渡す。
@@ -89,8 +92,6 @@ services:
       # 名前付きボリュームに永続化する。作り直したいときは
       # docker compose down -v でこのボリュームごと消す。
       - db-data:/var/lib/mysql
-      # 初回起動時にだけ実行される初期化 SQL。テスト用 DB (ebooks_test) を作る。
-      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
       interval: 5s
@@ -98,6 +99,26 @@ services:
       retries: 30
       start_period: 30s
     restart: unless-stopped
+
+  # db/init/*.sql を up のたびに流す使い捨てコンテナ。
+  # /docker-entrypoint-initdb.d はボリュームが空の初回起動時にしか動かず、
+  # 既存ボリュームに後から足した DB (ebooks_test など) が作られないため、こちらで流す。
+  # SQL は IF NOT EXISTS などで何度流しても壊れないように書くこと。
+  db-init:
+    image: mysql:8.4
+    volumes:
+      - ./db/init:/init:ro
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        for f in /init/*.sql; do
+          echo "apply $$f"
+          mysql -h db -uroot -proot < "$$f" || exit 1
+        done
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
 
   # DB 管理画面。db サービス専用の GUI で、アプリからは参照しない。
   phpmyadmin:

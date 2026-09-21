@@ -4,10 +4,8 @@
 -- RefreshDatabase がテストごとにテーブルを落として作り直すため、
 -- 開発用の ebooks_local とは必ず分ける。
 --
--- このファイルは /docker-entrypoint-initdb.d/ に置かれ、
--- MySQL のデータディレクトリが空のとき (= 初回起動時) にだけ実行される。
--- 既にボリュームがある状態で追加しても動かないので、その場合は
--- docker compose down -v でボリュームごと作り直すこと。
+-- このファイルは compose の db-init サービスが docker compose up のたびに流す。
+-- 既存のボリュームでも無ければ作られるよう、何度流しても同じ結果になる文だけを書く。
 CREATE DATABASE IF NOT EXISTS ebooks_test
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
