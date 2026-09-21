@@ -510,9 +510,9 @@
           <tr><th>ベタ書き</th><th>想定テーブル</th></tr>
         </thead>
         <tbody>
-          <tr><td>配列のキー <code>'sample'</code></td><td><code>books.slug</code></td></tr>
+          <tr><td>配列のキー <code>'sample'</code></td><td><code>books.code</code></td></tr>
           <tr><td><code>title</code> / <code>description</code> / <code>published_at</code></td><td><code>books</code> の各カラム</td></tr>
-          <tr><td><code>pages[].page_no</code> / <code>img_path</code> / <code>updated_at</code></td><td><code>books_pages</code> の各カラム</td></tr>
+          <tr><td><code>pages[].page_no</code> / <code>img_path</code> / <code>updated_at</code></td><td><code>book_pages</code> の各カラム</td></tr>
         </tbody>
       </table>
     </div>
@@ -554,7 +554,7 @@
     <p><code>max-age</code> だけでも有効期限内なら再取得は起きないが、<strong>ユーザーがリロードすると条件付きリクエスト（<code>If-Modified-Since</code>）が飛ぶ</strong>。画像10枚なら 10 往復。<code>immutable</code> を付けるとブラウザはこの再検証もしなくなる。「中身は絶対に変わらない」と宣言しているので、確認する理由がない。</p>
 
     <h3>だから URL 側で回す</h3>
-    <p>「絶対に変わらない」と言い切った以上、同じ URL のまま画像を差し替えても届かない。そこで <code>books_pages.updated_at</code> を <code>?v=</code> に載せる。</p>
+    <p>「絶対に変わらない」と言い切った以上、同じ URL のまま画像を差し替えても届かない。そこで <code>book_pages.updated_at</code> を <code>?v=</code> に載せる。</p>
 
 <pre><span class="c">// BookController::pageList()</span>
 $version = Carbon::parse($page[<span class="s">'updated_at'</span>])-&gt;getTimestamp();
@@ -805,7 +805,7 @@ curl -s -o /dev/null -w <span class="s">'%{http_code}\n'</span> localhost:8082/n
 
     <h3>次のステップ</h3>
     <ul>
-      <li>MySQL の追加と <code>books</code> / <code>books_pages</code> テーブルの作成</li>
+      <li>MySQL の追加と <code>books</code> / <code>book_pages</code> テーブルの作成</li>
       <li>書影・書籍一覧ページ</li>
       <li>しおりのサーバ保存（<code>saveProgress()</code> / <code>loadProgress()</code> を API 呼び出しに差し替え）</li>
     </ul>
