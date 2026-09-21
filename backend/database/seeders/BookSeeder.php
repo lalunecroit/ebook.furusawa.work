@@ -23,13 +23,13 @@ class BookSeeder extends Seeder
             [
                 'title' => 'Docker で作る電子書籍サービス',
                 'description' => 'フロントエンド編。ページめくりビューアの動作確認用サンプル。',
-                'pages' => 10,
+                'pages_count' => 10,
                 'published_at' => '2026-09-20 00:00:00',
             ],
         );
 
         foreach (range(1, 10) as $pageNo) {
-            $book->bookPages()->updateOrCreate(
+            $book->pages()->updateOrCreate(
                 ['page_no' => $pageNo],
                 ['img_path' => sprintf('/books/sample/page-%02d.svg', $pageNo)],
             );
