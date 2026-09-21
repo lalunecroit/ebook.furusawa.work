@@ -17,12 +17,15 @@ use Illuminate\Http\JsonResponse;
 class BookController extends Controller
 {
     /**
-     * GET /api/books/{code}
+     * GET /api/books/{book}
      * 書誌情報 + ページ一覧。ビューアはこれ1本で起動できる。
+     *
+     * $book はルートモデルバインディングで解決済み。
+     * books.code で引かれ、見つからなければここに来る前に 404 になる。
      */
-    public function show(string $code): JsonResponse
+    public function show(Book $book): JsonResponse
     {
-        $book = $this->findOrFail($code);
+        $this->loadPages($book);
 
         return response()->json([
             'data' => [
@@ -39,12 +42,12 @@ class BookController extends Controller
     }
 
     /**
-     * GET /api/books/{code}/pages
+     * GET /api/books/{book}/pages
      * ページ一覧だけが欲しいとき用。
      */
-    public function pages(string $code): JsonResponse
+    public function pages(Book $book): JsonResponse
     {
-        $book = $this->findOrFail($code);
+        $this->loadPages($book);
 
         return response()->json([
             'data' => $this->pageList($book->pages),
@@ -76,16 +79,13 @@ class BookController extends Controller
     }
 
     /**
-     * ページは必ず使うので eager load しておく (N+1 回避)。
+     * ページを読み込む。
+     *
+     * バインディングで解決された時点では本体しか引かれていないので、
+     * ここでページ順に並べて1クエリで取る (1ページずつ引く N+1 を避ける)。
      */
-    private function findOrFail(string $code): Book
+    private function loadPages(Book $book): void
     {
-        $book = Book::with(['pages' => fn ($query) => $query->orderBy('page_no')])
-            ->where('code', $code)
-            ->first();
-
-        abort_if($book === null, 404, "Book [{$code}] not found.");
-
-        return $book;
+        $book->load(['pages' => fn ($query) => $query->orderBy('page_no')]);
     }
 }

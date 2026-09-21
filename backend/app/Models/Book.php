@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\RouteKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -14,8 +15,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * is_active は deleted_at から導出される生成列なので fillable に入れない。
  * 値を入れようとすると DB 側に弾かれる。
+ *
+ * ルートモデルバインディングは id ではなく code で解決する (#[RouteKey])。
+ * ルート側は {book} と書くだけでよく、404 と論理削除済みの除外は
+ * フレームワークが面倒を見る。
  */
 #[Fillable(['code', 'title', 'description', 'pages_count', 'published_at'])]
+#[RouteKey('code')]
 class Book extends Model
 {
     use SoftDeletes;
