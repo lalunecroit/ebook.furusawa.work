@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * books テーブル。
  *
- * 書誌情報を持つ。ページ画像そのものは books_pages 側に持たせる。
+ * 書誌情報を持つ。ページ画像そのものは book_pages 側に持たせる。
  */
 return new class extends Migration
 {
@@ -26,9 +26,10 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
 
-            // 総ページ数。books_pages を数えれば出せるが、一覧で毎回
+            // 総ページ数。book_pages を数えれば出せるが、一覧で毎回
             // COUNT を打たずに済むようにここへ持たせる。
-            $table->unsignedInteger('pages')->default(0);
+            // 名前は withCount('pages') が生成する属性名に合わせてある。
+            $table->unsignedInteger('pages_count')->default(0);
 
             // 公開日時。null = 未公開、未来日時 = 公開予約。
             // 「公開済みの本を新しい順に」が一覧の基本クエリなので索引を張る。
