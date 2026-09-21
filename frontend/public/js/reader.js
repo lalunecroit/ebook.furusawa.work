@@ -35,11 +35,18 @@
  *   ブラウザ ──▶ API (:8000) ──▶ ページ一覧(JSON)
  *          └──▶ CDN (:8082) ──▶ 画像
  * ========================================================================== */
+/**
+ * 表示する書籍のコード。
+ * 一覧ページ (index.html) からは reader.html?book=<code> の形で渡ってくる。
+ * 直接開かれたときは sample にフォールバックする。
+ */
+const bookCode = new URLSearchParams(location.search).get('book') || 'sample';
+
 const CONFIG = {
   /** バックエンド API。ホストが変わるのはここだけ */
   api: {
     base: 'http://localhost:8000/api',
-    slug: 'sample',
+    code: bookCode,
   },
 
   /** 総ページ数。起動時に API の total_pages で上書きする */
@@ -64,8 +71,8 @@ const CONFIG = {
   /** スワイプと判定する最小の横移動量(px) */
   swipeThreshold: 50,
 
-  /** しおりの保存キー。本ごとに変える想定 */
-  storageKey: 'ebook:last-page:sample-001',
+  /** しおりの保存キー。本ごとに分ける (別の本の続きが混ざらないように) */
+  storageKey: `ebook:last-page:${bookCode}`,
 };
 
 /** ページ番号 → 画像URL。API のレスポンスで埋める */
@@ -76,7 +83,7 @@ const pageUrls = new Map();
  * 失敗したら例外を投げ、init() 側でエラー表示に回す。
  */
 async function fetchBook() {
-  const url = `${CONFIG.api.base}/books/${CONFIG.api.slug}`;
+  const url = `${CONFIG.api.base}/books/${CONFIG.api.code}`;
   const res = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`API ${res.status} ${res.statusText}`);
 
@@ -129,6 +136,9 @@ const el = {
   pagerTotal:  document.getElementById('pagerTotal'),
   directionLabel: document.getElementById('directionLabel'),
   liveRegion:  document.getElementById('liveRegion'),
+  endDialog:   document.getElementById('endDialog'),   // 最終ページの確認ダイアログ
+  endBack:     document.getElementById('endBack'),
+  endCancel:   document.getElementById('endCancel'),
   navLeft:     document.querySelector('[data-nav="left"]'),
   navRight:    document.querySelector('[data-nav="right"]'),
 };
@@ -205,9 +215,9 @@ function render() {
   el.directionLabel.textContent = direction === 'rtl' ? '右綴じ' : '左綴じ';
   el.sheet.style.transformOrigin = spineOrigin();
 
-  // 端に来たらナビを無効化
-  el.navLeft.disabled  = !isReachable(current + deltaForSide('left'));
-  el.navRight.disabled = !isReachable(current + deltaForSide('right'));
+  // 端のナビ。最終ページの「進む」側だけは残して終端マークにする
+  updateNav(el.navLeft, 'left');
+  updateNav(el.navRight, 'right');
 
   // スクリーンリーダーへの通知
   el.liveRegion.textContent = `${CONFIG.totalPages} ページ中 ${current} ページ目`;
@@ -217,6 +227,34 @@ function render() {
 /** そのページ番号が実在するか */
 function isReachable(n) {
   return n >= 1 && n <= CONFIG.totalPages;
+}
+
+/**
+ * 左右のナビボタンの状態を更新する。
+ *
+ * 先頭で「戻る」側は押せなくする (従来どおり隠す) が、
+ * 最終ページの「進む」側は押せるまま終端マークに変える。
+ * 押すと一覧へ戻るか尋ねるダイアログが出るので、行き止まりで
+ * 反応が無いという状態を作らない。
+ */
+function updateNav(btn, side) {
+  const delta = deltaForSide(side);
+  const atEnd = delta > 0 && state.current === CONFIG.totalPages;
+
+  btn.disabled = !atEnd && !isReachable(state.current + delta);
+  btn.dataset.end = atEnd ? 'true' : 'false';
+
+  const arrow = btn.querySelector('.nav__arrow');
+  if (atEnd) {
+    // 「これ以上ない」ことが分かる記号 (→| / |←)
+    arrow.textContent = side === 'left' ? '⇤' : '⇥';
+    btn.setAttribute('aria-label', '最後のページです。書籍一覧に戻る');
+    btn.title = '最後のページ';
+  } else {
+    arrow.textContent = side === 'left' ? '‹' : '›';
+    btn.setAttribute('aria-label', side === 'left' ? '左のページへ' : '右のページへ');
+    btn.removeAttribute('title');
+  }
 }
 
 
@@ -319,8 +357,24 @@ function afterPageChange() {
 /** 相対移動。delta が +1 なら次ページ、-1 なら前ページ */
 function move(delta) {
   const target = state.current + delta;
+
+  // 最終ページでさらに先へ進もうとしたら、一覧へ戻るか尋ねる。
+  // ボタン・キー・スワイプはすべてここを通るので、分岐は1か所で済む。
+  if (delta > 0 && state.current === CONFIG.totalPages) {
+    openEndDialog();
+    return;
+  }
+
   if (!isReachable(target)) return;
   goTo(target);
+}
+
+/** 最終ページの確認ダイアログを開く。既に開いていれば何もしない */
+function openEndDialog() {
+  if (!el.endDialog || el.endDialog.open) return;
+
+  el.endDialog.showModal();     // フォーカスの閉じ込めと Esc 終了はブラウザ任せ
+  el.liveRegion.textContent = '最後のページです。書籍一覧に戻りますか?';
 }
 
 
@@ -394,6 +448,12 @@ function loadProgress() {
  * ========================================================================== */
 function bindEvents() {
 
+  /* --- 最終ページの確認ダイアログ --- */
+  el.endBack.addEventListener('click', () => {
+    location.href = 'index.html';
+  });
+  el.endCancel.addEventListener('click', () => el.endDialog.close());
+
   /* --- 画面左右のナビボタン --- */
   el.navLeft.addEventListener('click',  () => move(deltaForSide('left')));
   el.navRight.addEventListener('click', () => move(deltaForSide('right')));
@@ -416,6 +476,8 @@ function bindEvents() {
   document.addEventListener('keydown', (ev) => {
     // 入力欄にフォーカスがあるときは邪魔しない
     if (ev.target.matches('input, textarea, select')) return;
+    // ダイアログ表示中は Esc と Tab をブラウザに任せる
+    if (el.endDialog.open) return;
 
     switch (ev.key) {
       case 'ArrowLeft':  move(deltaForSide('left'));  break;
