@@ -70,5 +70,25 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # DB 管理画面。db サービス専用の GUI で、アプリからは参照しない。
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    ports:
+      - "8083:80"
+    environment:
+      # 接続先は compose のサービス名で解決する
+      PMA_HOST: db
+      PMA_PORT: "3306"
+      # ローカル専用なので自動ログインにしておく。
+      # root で入りたいときはこの2行を消せばログイン画面が出る (root / root)
+      PMA_USER: ebooks
+      PMA_PASSWORD: password
+      # dump の取り込みでサイズ上限に当たらないように少し広げておく
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   db-data:
