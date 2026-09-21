@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\RouteKey;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -37,6 +38,30 @@ class Book extends Model
             'pages_count' => 'integer',
             'published_at' => 'datetime',
         ];
+    }
+
+    /**
+     * ルートモデルバインディングの検索条件。
+     *
+     * 既定では SoftDeletes のグローバルスコープが付ける `deleted_at is null` だけで
+     * 絞られるが、それでは複合ユニーク (code, is_active) の code 側しか索引に効かず、
+     * type=ref + Using where (deleted_at は行を読んでから判定) になる。
+     *
+     * 生存行は is_active = 1 と同値なので、これを条件に足して索引を端まで使う。
+     * type=const の一意検索になり、deleted_at 側の条件は取得済みの行に対する
+     * 追加判定になるだけでコストはかからない。
+     *
+     * 削除済みも引きたいルート (->withTrashed()) は resolveSoftDeletableRouteBinding
+     * を通るため、こちらの条件は適用されない。
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        // 親の戻り値の宣言は Contracts\...\Builder (where() を宣言していないインターフェース)
+        // なので、実体である Eloquent のビルダであることを注釈しておく。
+        /** @var Builder<static> $query */
+        $query = $this->resolveRouteBindingQuery($this, $value, $field);
+
+        return $query->where('is_active', 1)->first();
     }
 
     /**
