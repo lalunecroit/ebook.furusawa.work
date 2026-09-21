@@ -81,9 +81,9 @@ PHP を画像の通り道にしないことで、API は JSON を返すだけの
 
 | ベタ書きのキー | 対応する想定テーブル |
 |---|---|
-| 配列のキー (`'sample'`) | `books.slug` |
+| 配列のキー (`'sample'`) | `books.code` |
 | `title` / `description` / `published_at` | `books` の各カラム |
-| `pages[].page_no` / `img_path` / `updated_at` | `books_pages` の各カラム |
+| `pages[].page_no` / `img_path` / `updated_at` | `book_pages` の各カラム |
 
 ### CDN ベース URL の渡し方
 
@@ -117,7 +117,7 @@ location ~* \.(svg|png|jpe?g|webp|avif|gif|ico)$ {
 ### API 側：URL を変える
 
 CDN 側で「絶対に変わらない」と宣言した以上、画像を差し替えても同じ URL のままではブラウザは取りに来ません。
-そこで `books_pages.updated_at` を Unix time にして `?v=` に載せています。
+そこで `book_pages.updated_at` を Unix time にして `?v=` に載せています。
 
 ```php
 $version = Carbon::parse($page['updated_at'])->getTimestamp();
@@ -237,7 +237,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8000/api/books/nope
 
 ## 次のステップ
 
-- DB（MySQL）の追加と `books` / `books_pages` テーブルの作成。`BookController::BOOKS` を Eloquent に置き換え
+- DB（MySQL）の追加と `books` / `book_pages` テーブルの作成。`BookController::BOOKS` を Eloquent に置き換え
 - 書影・書籍一覧ページ
 - しおりのサーバ保存（`saveProgress()` / `loadProgress()` を API 呼び出しに差し替え）
 

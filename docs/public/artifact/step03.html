@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>テーブル設計ノート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / db</div>
+    <h1>スキーマを先に決める</h1>
+    <p class="tagline">API はまだ触らず、MySQL とテーブルとモデルだけを用意する。論理削除と一意制約の両立、名前の付け方、そしてタイムゾーンが3箇所ある話。</p>
+    <div class="meta">
+      <span><b>対象</b> compose.yaml · migrations · models</span>
+      <span><b>DB</b> MySQL 8.4</span>
+      <span><b>API</b> まだベタ書きのまま</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s1">6つのコンテナ</a></li>
+      <li><a href="#s2">なぜスキーマだけ先に決めるのか</a></li>
+      <li><a href="#s3">テーブル設計</a></li>
+      <li><a href="#s4">論理削除と一意制約の両立</a></li>
+      <li><a href="#s5">タイムスタンプの既定値</a></li>
+      <li><a href="#s6">命名を規約に寄せる</a></li>
+      <li><a href="#s7">モデルとシーダー</a></li>
+      <li><a href="#s8">タイムゾーンは3箇所</a></li>
+      <li><a href="#s9">テストが開発DBを見ないようにする</a></li>
+      <li><a href="#s10">運用と積み残し</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">6つのコンテナ</h2>
+    <p class="lede">Step.02 の4つに、<code>db</code> と管理画面の <code>phpmyadmin</code> が加わった。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>サービス</th><th>ポート</th><th>中身</th><th>役割</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>frontend</code></td><td>8080</td><td>nginx:1.27-alpine</td><td>ビューア本体</td></tr>
+          <tr><td><code>backend</code></td><td>8000</td><td>php:8.4-cli-alpine</td><td>API。<strong>まだ DB を見ていない</strong></td></tr>
+          <tr><td><code>cdn</code></td><td>8082</td><td>nginx:1.27-alpine</td><td>ページ画像</td></tr>
+          <tr><td><code>docs</code></td><td>8081</td><td>nginx:1.27-alpine</td><td>このドキュメント</td></tr>
+          <tr><td><code>db</code></td><td>3306</td><td>mysql:8.4</td><td>書誌情報。<code>db-data</code> ボリュームに永続化</td></tr>
+          <tr><td><code>phpmyadmin</code></td><td>8083</td><td>phpmyadmin:5.2</td><td>DB 管理画面。アプリからは参照しない</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>3306 をホストに公開しているのは、ホスト側から <code>artisan migrate</code> や GUI クライアントで直接繋ぐため。データは名前付きボリューム <code>db-data</code> に置き、作り直したいときは <code>docker compose down -v</code> で丸ごと捨てる。</p>
+
+    <h3>接続情報は compose から渡す</h3>
+
+<pre>backend:
+  environment:
+    DB_CONNECTION: mysql
+    DB_HOST: db          <span class="c">← コンテナ間はサービス名で解決</span>
+    DB_DATABASE: ebooks_local
+    DB_TIMEZONE: <span class="s">"+09:00"</span></pre>
+
+    <p>Laravel の Dotenv は immutable で、<strong>既存の環境変数を <code>.env</code> の値で上書きしない</strong>。そのため <code>.env</code> が <code>DB_CONNECTION=sqlite</code> のままでも、コンテナ内では compose の値が勝って MySQL に繋がる。ホストから <code>artisan</code> を叩くときは <code>.env</code> が使われるので、<code>DB_HOST</code> を使い分けられる。</p>
+
+    <div class="note">
+      <span class="note__label">MySQL は起動直後には繋がらない</span>
+      <p><code>db</code> には <code>mysqladmin ping</code> のヘルスチェックを入れ、<code>backend</code> と <code>phpmyadmin</code> は <code>condition: service_healthy</code> で待つ。コンテナが立ち上がった瞬間と、MySQL が接続を受け付ける瞬間には差がある。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">なぜスキーマだけ先に決めるのか</h2>
+    <p class="lede">このステップでは <strong>API を1行も触っていない</strong>。書籍データは Step.02 のまま <code>BookController::BOOKS</code> にベタ書きされている。</p>
+
+    <p>コードの差し替えは後からいくらでもできるが、<strong>スキーマはデータが入った後に変えると移行作業が要る</strong>。論理削除をどう表すか、一意制約をどこに張るか、カラム名をどうするか — その辺りを決め切ってからモデルとシーダーまでを用意し、API の差し替えは次のステップに回した。</p>
+
+    <p>実際このステップでは、テーブル定義を2回作り直している（<code>is_active</code> の位置とタイムスタンプの既定値、そして命名規約）。まだデータが無いので <code>migrate:fresh</code> で済むが、運用開始後なら差分マイグレーションと移行スクリプトの話になっていた。</p>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">テーブル設計</h2>
+    <p class="lede">2テーブル。<code>books</code> が書誌情報、<code>book_pages</code> が1行=1ページ。</p>
+
+<pre><span class="c">books                              book_pages</span>
+├ id                               ├ id
+├ code          <span class="c">(URL 上の識別子)</span>    ├ book_id   <span class="c">→ books.id (ON DELETE CASCADE)</span>
+├ title                            ├ page_no
+├ description                      ├ img_path  <span class="c">(CDN ルートからの相対パス)</span>
+├ pages_count   <span class="c">(非正規化した件数)</span>  ├ created_at
+├ published_at                     └ updated_at
+├ is_active     <span class="c">(生成列)</span>
+├ deleted_at    <span class="c">(論理削除)</span>
+├ created_at
+└ updated_at</pre>
+
+    <p><code>img_path</code> に入れるのは <code>/books/sample/page-01.svg</code> のような相対パスだけ。ホスト名は <code>config/cdn.php</code> が持っているので、CDN を実サービスに移しても DB は触らずに済む。Step.02 で引いた線をそのまま持ち込んでいる。</p>
+
+    <p><code>published_at</code> には索引を張った。「公開済みの本を新しい順に」が一覧の基本クエリになるため。<code>book_pages</code> の <code>unique(book_id, page_no)</code> は重複ページを防ぐと同時に、ページ順の取得にも効く。</p>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">論理削除と一意制約の両立</h2>
+    <p class="lede">「生存行の <code>code</code> は一意。削除済みの <code>code</code> は再利用できる」を1本の制約で表す。</p>
+
+    <p>素直に <code>unique('code')</code> を張ると、一度削除した本の <code>code</code> が永久に使えなくなる。かといって <code>unique(['code', 'deleted_at'])</code> にすると、<strong>NULL 同士は別物と判定されるため生存行の重複をまったく弾けない</strong>。論理削除でよく踏む落とし穴がここにある。</p>
+
+<pre><span class="c">// deleted_at から導出する生成列を置き、それと複合ユニークにする</span>
+$table-&gt;unsignedTinyInteger(<span class="s">'is_active'</span>)
+    -&gt;storedAs(<span class="s">'CASE WHEN deleted_at IS NULL THEN 1 END'</span>);
+
+$table-&gt;unique([<span class="s">'code'</span>, <span class="s">'is_active'</span>]);</pre>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>行の状態</th><th><code>is_active</code></th><th>ユニーク判定</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>生存</td><td><code>1</code></td><td><code>(code, 1)</code> で比較され、重複を弾く</td></tr>
+          <tr><td>削除済み</td><td><code>NULL</code></td><td>NULL を含む行は判定対象外。何件でも共存できる</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>「NULL を含む行はユニーク制約の対象外」という SQL の性質を逆手に取っている。値は DB が入れるのでアプリ側は何もしなくてよく、<code>SoftDeletes</code> をそのまま使える。<strong>生成列に書き込むと DB エラーになるので、モデルの <code>fillable</code> には入れない。</strong></p>
+
+    <div class="note note--warn">
+      <span class="note__label">型は tinyint。enum('0','1') は避ける</span>
+      <p>ENUM は内部的に 1 始まりのインデックスで値を持つ。<code>ENUM('0','1')</code> に対する <code>WHERE is_active = 1</code>（数値比較）はインデックス比較になり、<strong>1番目の要素である <code>'0'</code> にマッチする</strong>。クォートを1つ忘れただけで静かに壊れる。サイズはどちらも 1 バイトで差が無い。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">タイムスタンプの既定値</h2>
+    <p class="lede">Laravel の <code>timestamps()</code> をそのまま使わず、DB 側にも既定値を持たせた。</p>
+
+<pre>$table-&gt;timestamp(<span class="s">'created_at'</span>)-&gt;useCurrent();
+$table-&gt;timestamp(<span class="s">'updated_at'</span>)-&gt;useCurrent()-&gt;useCurrentOnUpdate();</pre>
+
+<pre><span class="c">-- 生成される DDL</span>
+`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,</pre>
+
+    <p>Eloquent 経由なら PHP 側が値を入れるので既定値は要らない。それでも付けているのは、<strong>管理画面のバッチや生 SQL で画像を差し替えたときに <code>updated_at</code> が動かないと、Step.02 で組んだ <code>?v=</code> のキャッシュバスターが更新されないから</strong>。「画像を差し替えたら URL が変わる」という約束を、DB 側からも守らせている。</p>
+  </section>
+
+  <!-- ================================================== 6 -->
+  <section id="s6">
+    <h2 data-sec="§06">命名を規約に寄せる</h2>
+    <p class="lede">最初は <code>books_pages</code> / <code>books_id</code> だった。規約に合わせると、モデル側の明示指定が3箇所消える。</p>
+
+<pre><span class="c">// 規約から外れていると</span>
+$table-&gt;foreignId(<span class="s">'books_id'</span>)-&gt;constrained(<span class="s">'books'</span>);   <span class="c">← 参照先テーブルの指定が必要</span>
+$this-&gt;hasMany(BookPage::class, <span class="s">'books_id'</span>);           <span class="c">← 外部キーの指定が必要</span>
+#[Table(<span class="s">'books_pages'</span>)]                                <span class="c">← テーブル名の指定が必要</span>
+
+<span class="c">// 規約どおり (book_pages / book_id)</span>
+$table-&gt;foreignId(<span class="s">'book_id'</span>)-&gt;constrained();
+$this-&gt;hasMany(BookPage::class);</pre>
+
+    <p><code>constrained()</code> は「カラム名から <code>_id</code> を落として複数形にしたテーブル」を参照先とみなす。<code>books_id</code> だと <code>bookses</code> を探しにいくので、明示指定が必須だった。</p>
+
+    <h3>pages ではなく pages_count</h3>
+
+    <p>総ページ数のカラムを <code>pages</code> にすると、リレーション名 <code>pages()</code> と衝突する。<strong>Eloquent はカラムを優先するので、<code>pages()</code> を定義しても <code>$book-&gt;pages</code> は <code>int</code> を返し続ける</strong>。例外も警告も出ないので厄介な部類のバグになる。</p>
+
+<pre><span class="c">// カラムを pages_count にして pages を空けておく</span>
+$book-&gt;pages;         <span class="c">→ HasMany のコレクション</span>
+$book-&gt;pages_count;   <span class="c">→ 件数</span></pre>
+
+    <p><code>pages_count</code> は <code>withCount('pages')</code> が生成する属性名と同じ。一覧ではカラムを読み、詳細では実数を数える、と使い分けてもコードの見た目が変わらない。将来カラムを廃止して <code>withCount()</code> に一本化するときも呼び出し側は無修正で済む。</p>
+  </section>
+
+  <!-- ================================================== 7 -->
+  <section id="s7">
+    <h2 data-sec="§07">モデルとシーダー</h2>
+
+<pre>#[Fillable([<span class="s">'code'</span>, <span class="s">'title'</span>, <span class="s">'description'</span>, <span class="s">'pages_count'</span>, <span class="s">'published_at'</span>])]
+class Book extends Model
+{
+    use SoftDeletes;
+
+    public function pages(): HasMany
+    {
+        return $this-&gt;hasMany(BookPage::class);
+    }
+}</pre>
+
+    <p><code>is_active</code> は <code>fillable</code> に入れていない。生成列なので、書き込もうとすると DB がエラーを返す。</p>
+
+<pre>$book = Book::updateOrCreate([<span class="s">'code'</span> =&gt; <span class="s">'sample'</span>], [...]);
+
+foreach (range(<span class="s">1</span>, <span class="s">10</span>) as $pageNo) {
+    $book-&gt;pages()-&gt;updateOrCreate(
+        [<span class="s">'page_no'</span> =&gt; $pageNo],
+        [<span class="s">'img_path'</span> =&gt; sprintf(<span class="s">'/books/sample/page-%02d.svg'</span>, $pageNo)],
+    );
+}</pre>
+
+    <p>シーダーは <code>updateOrCreate</code> で書いてあるので、何度流しても同じ状態になる。<code>BookController</code> にベタ書きしていた10ページ分をそのまま DB へ移した内容で、次のステップで API がこれを読むようになる。</p>
+  </section>
+
+  <!-- ================================================== 8 -->
+  <section id="s8">
+    <h2 data-sec="§08">タイムゾーンは3箇所</h2>
+    <p class="lede">日本時間に揃えるのに3箇所の設定が要った。どれか1つでも抜けるとズレる。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>どこ</th><th>設定</th><th>効く範囲</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>MySQL サーバ</td><td><code>command: --default-time-zone=+09:00</code></td><td><code>CURRENT_TIMESTAMP</code>、サーバ既定のタイムゾーン</td></tr>
+          <tr><td>Laravel アプリ</td><td><code>APP_TIMEZONE=Asia/Tokyo</code></td><td>PHP が生成する日時（<code>now()</code> など）</td></tr>
+          <tr><td>DB 接続</td><td><code>DB_TIMEZONE=+09:00</code></td><td>接続ごとの <code>time_zone</code>。<code>timestamp</code> 型の解釈と変換</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>3つ目が要るのは、<code>timestamp</code> 型が<strong>セッションのタイムゾーンで解釈・変換される</strong>から。サーバ側だけ JST にしても、接続が UTC のままなら <code>useCurrent()</code> で入る値がズレる。<code>config/database.php</code> の <code>'timezone' =&gt; env('DB_TIMEZONE')</code> がこれを設定している。</p>
+
+    <div class="note">
+      <span class="note__label">名前ではなくオフセットで指定する</span>
+      <p><code>--default-time-zone=Asia/Tokyo</code> と書くには <code>mysql_tzinfo_to_sql</code> でタイムゾーンテーブルを読み込む必要があり、未読込のまま起動すると失敗する。日本は DST が無いので <code>+09:00</code> で実質同義。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 9 -->
+  <section id="s9">
+    <h2 data-sec="§09">テストが開発DBを見ないようにする</h2>
+    <p class="lede">まだテストは書いていないが、書く前に塞いでおく必要があった。</p>
+
+    <p><code>phpunit.xml</code> には最初からインメモリ SQLite を使う指定がある。ところが compose の <code>environment</code> で渡した値は、コンテナ内で<strong>本物の環境変数として <code>$_SERVER</code> に入る</strong>。Laravel の <code>env()</code> は次の順に参照する。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>$_SERVER</b><span>compose の environment</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>$_ENV</b><span>phpunit の &lt;env&gt;</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>putenv</b><span>.env</span></div>
+    </div>
+
+    <p>PHPUnit の <code>&lt;env&gt;</code> が書き換えるのは <code>$_ENV</code> と <code>putenv</code> まで。<code>$_SERVER</code> には触らないので、このまま <code>RefreshDatabase</code> を使うテストを書くと、<strong>開発用の <code>ebooks_local</code> に接続してテーブルを落とす</strong>。</p>
+
+<pre><span class="c">&lt;!-- $_SERVER 側も上書きする --&gt;</span>
+&lt;server name=<span class="s">"APP_ENV"</span> value=<span class="s">"testing"</span> force=<span class="s">"true"</span>/&gt;
+&lt;server name=<span class="s">"DB_CONNECTION"</span> value=<span class="s">"sqlite"</span> force=<span class="s">"true"</span>/&gt;
+&lt;server name=<span class="s">"DB_DATABASE"</span> value=<span class="s">":memory:"</span> force=<span class="s">"true"</span>/&gt;</pre>
+
+    <p>「テストは開発 DB を壊さない」は暗黙の前提にしがちだが、compose で環境変数を注入する構成ではその前提が崩れる。テストを書き始める前に確かめておきたい。</p>
+  </section>
+
+  <!-- ================================================== 10 -->
+  <section id="s10">
+    <h2 data-sec="§10">運用と積み残し</h2>
+
+<pre>docker compose up -d
+docker compose exec backend php artisan migrate --seed
+
+<span class="c"># 生成列と複合ユニークの確認</span>
+docker compose exec db mysql -uebooks -ppassword -e <span class="s">'SHOW CREATE TABLE books\G'</span> ebooks_local</pre>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>コマンド</th><th>挙動</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>migrate:fresh --seed</code></td><td>全テーブルを DROP → 流し直し → シード。<code>down()</code> の出来に依存しない</td></tr>
+          <tr><td><code>migrate:refresh</code></td><td><code>down()</code> で巻き戻してから流し直す。<code>down()</code> の検証も兼ねたいとき</td></tr>
+          <tr><td><code>docker compose down -v</code></td><td><code>db-data</code> ボリュームごと破棄する</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>ハマりどころ</h3>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>症状</th><th>原因</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>migrate</code> がタイミングで失敗する</td><td>MySQL が接続を受け付ける前に実行している。<code>condition: service_healthy</code> で待つ</td></tr>
+          <tr><td>サーバを JST にしたのに日時がズレる</td><td>接続単位の <code>time_zone</code> が UTC のまま。<code>DB_TIMEZONE</code> が要る</td></tr>
+          <tr><td>MySQL が起動しない</td><td><code>--default-time-zone</code> に名前を指定した。タイムゾーンテーブルの読み込みが必要</td></tr>
+          <tr><td>テストが開発データを消す</td><td>compose の環境変数が <code>$_SERVER</code> に入り、<code>&lt;env&gt;</code> が効かない</td></tr>
+          <tr><td><code>$book-&gt;pages</code> が <code>int</code> を返す</td><td>カラム名とリレーション名の衝突。<code>pages_count</code> に改名して回避</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>積み残し</h3>
+    <ul>
+      <li><strong>API がまだ DB を見ていない</strong>。<code>BookController::BOOKS</code> は定数のまま、ルートも <code>{slug}</code> のまま</li>
+      <li><strong>テストが無い</strong>。テスト用 DB の隔離は済ませたので、次のステップで書ける</li>
+      <li><code>artisan serve</code> のまま（Step.02 からの持ち越し）</li>
+    </ul>
+
+    <h3>次のステップ</h3>
+    <ul>
+      <li><code>BookController::BOOKS</code> を Eloquent に置き換え（ルートも <code>{slug}</code> → <code>{code}</code>）</li>
+      <li>フィーチャテストの追加</li>
+      <li>書籍一覧 API と一覧ページ（<code>pages_count</code> と書影が要るのはここ）</li>
+    </ul>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">
+    ebook.furusawa.work — Step.03 / db<br>
+    MySQL 8.4 · phpMyAdmin 5.2 · Laravel 13.32
+  </p>
+
+</div>
+</body>
+</html>
