@@ -1,0 +1,285 @@
+[
+  {
+    "code": "sample",
+    "title": "Docker で作る電子書籍サービス",
+    "description": "フロントエンド編。ページめくりビューアの動作確認用サンプル。",
+    "published_at": "2026-09-20 00:00:00",
+    "cover": {
+      "line1": "Docker で作る",
+      "line2": "電子書籍サービス",
+      "subtitle": "— フロントエンド編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年9月20日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "ビューアの構造", "type": "chapter" },
+      { "title": "状態管理の考え方", "type": "figure" },
+      { "title": "ページめくりの実装", "type": "chapter" },
+      { "title": "入力ハンドリング", "type": "chapter" },
+      { "title": "画像のプリロード", "type": "figure" },
+      { "title": "バックエンド連携", "type": "chapter" }
+    ],
+    "quote": ["状態を1か所に集めておくと、", "描画はその写像として書ける。"],
+    "figure_caption": "単方向データフロー",
+    "accents": [
+      "#1f3a5f", "#2f6feb", "#0f8a7a", "#b5622a", "#7a3f9d",
+      "#c0392b", "#16794c", "#8a6d1f", "#3b5bdb", "#1f3a5f"
+    ]
+  },
+  {
+    "code": "compose-basics",
+    "title": "compose で組むローカル環境",
+    "description": "サービスの分け方、依存の待ち合わせ、ボリュームの扱いまで。",
+    "published_at": "2026-08-05 00:00:00",
+    "cover": {
+      "line1": "compose で組む",
+      "line2": "ローカル環境",
+      "subtitle": "— コンテナ構成編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年8月5日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "サービスの切り分け", "type": "chapter" },
+      { "title": "依存と起動順序", "type": "figure" },
+      { "title": "ボリュームとバインドマウント", "type": "chapter" },
+      { "title": "環境変数の渡し方", "type": "chapter" },
+      { "title": "ヘルスチェック", "type": "figure" },
+      { "title": "profiles の使いどころ", "type": "chapter" }
+    ],
+    "quote": ["起動したことと、", "受け付けられることは別である。"],
+    "figure_caption": "依存の待ち合わせ",
+    "accent_offset": 1
+  },
+  {
+    "code": "laravel-api",
+    "title": "Laravel で書く JSON API",
+    "description": "ルーティングからリソース、テストまでの最短経路。",
+    "published_at": "2026-07-15 00:00:00",
+    "cover": {
+      "line1": "Laravel で書く",
+      "line2": "JSON API",
+      "subtitle": "— バックエンド編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年7月15日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "ルーティングの設計", "type": "chapter" },
+      { "title": "モデルバインディング", "type": "figure" },
+      { "title": "API Resource", "type": "chapter" },
+      { "title": "バリデーション", "type": "chapter" },
+      { "title": "例外とステータスコード", "type": "figure" },
+      { "title": "フィーチャテスト", "type": "chapter" }
+    ],
+    "quote": ["コントローラは、", "取って渡すだけに保つ。"],
+    "figure_caption": "リクエストの流れ",
+    "accent_offset": 2
+  },
+  {
+    "code": "mysql-schema",
+    "title": "MySQL テーブル設計ノート",
+    "description": "論理削除・一意制約・生成列。後から変えにくいところを先に決める。",
+    "published_at": "2026-06-28 00:00:00",
+    "cover": {
+      "line1": "MySQL",
+      "line2": "テーブル設計ノート",
+      "subtitle": "— スキーマ編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年6月28日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "主キーと識別子", "type": "chapter" },
+      { "title": "索引の効き方", "type": "figure" },
+      { "title": "論理削除の表し方", "type": "chapter" },
+      { "title": "生成列と部分ユニーク", "type": "chapter" },
+      { "title": "日時とタイムゾーン", "type": "figure" },
+      { "title": "マイグレーション運用", "type": "chapter" }
+    ],
+    "quote": ["NULL は比較されない。", "その性質を設計に使う。"],
+    "figure_caption": "複合索引の使われ方",
+    "accent_offset": 3
+  },
+  {
+    "code": "nginx-ops",
+    "title": "nginx 配信の勘どころ",
+    "description": "静的配信・リバースプロキシ・キャッシュヘッダの実務。",
+    "published_at": "2026-06-02 00:00:00",
+    "cover": {
+      "line1": "nginx",
+      "line2": "配信の勘どころ",
+      "subtitle": "— 運用編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年6月2日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "location の優先順位", "type": "chapter" },
+      { "title": "リバースプロキシ", "type": "figure" },
+      { "title": "公開範囲の絞り方", "type": "chapter" },
+      { "title": "圧縮の効かせどころ", "type": "chapter" },
+      { "title": "fastcgi との接続", "type": "figure" },
+      { "title": "ログと切り分け", "type": "chapter" }
+    ],
+    "quote": ["配るものと、", "作るものを分ける。"],
+    "figure_caption": "リクエストの振り分け",
+    "accent_offset": 4
+  },
+  {
+    "code": "cdn-cache",
+    "title": "キャッシュ設計の基礎",
+    "description": "immutable と URL バージョニング。差し替えても届く仕組み。",
+    "published_at": "2026-05-18 00:00:00",
+    "cover": {
+      "line1": "キャッシュ設計",
+      "line2": "の基礎",
+      "subtitle": "— CDN 編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年5月18日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "Cache-Control を読む", "type": "chapter" },
+      { "title": "条件付きリクエスト", "type": "figure" },
+      { "title": "immutable の意味", "type": "chapter" },
+      { "title": "URL バージョニング", "type": "chapter" },
+      { "title": "無効化と再取得", "type": "figure" },
+      { "title": "圧縮と事前生成", "type": "chapter" }
+    ],
+    "quote": ["消せないものは、", "名前を変えて置き換える。"],
+    "figure_caption": "キャッシュバスターの流れ",
+    "accent_offset": 5
+  },
+  {
+    "code": "php-runtime",
+    "title": "PHP 実行環境の選び方",
+    "description": "ビルトインサーバ・php-fpm・常駐型。それぞれの向き不向き。",
+    "published_at": "2026-04-22 00:00:00",
+    "cover": {
+      "line1": "PHP",
+      "line2": "実行環境の選び方",
+      "subtitle": "— ランタイム編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年4月22日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "ビルトインサーバの限界", "type": "chapter" },
+      { "title": "php-fpm の仕組み", "type": "figure" },
+      { "title": "プロセス管理の設定", "type": "chapter" },
+      { "title": "環境変数の伝わり方", "type": "chapter" },
+      { "title": "opcache と再読み込み", "type": "figure" },
+      { "title": "常駐型という選択", "type": "chapter" }
+    ],
+    "quote": ["開発用のサーバは、", "開発にだけ使う。"],
+    "figure_caption": "マスターとワーカー",
+    "accent_offset": 6
+  },
+  {
+    "code": "testing-layers",
+    "title": "テストの置きどころ",
+    "description": "何をどの層で守るか。DB を使うテストの分け方。",
+    "published_at": "2026-03-30 00:00:00",
+    "cover": {
+      "line1": "テストの",
+      "line2": "置きどころ",
+      "subtitle": "— 品質編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年3月30日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "単体とフィーチャ", "type": "chapter" },
+      { "title": "テスト用 DB の分離", "type": "figure" },
+      { "title": "ファクトリの設計", "type": "chapter" },
+      { "title": "スキーマを守るテスト", "type": "chapter" },
+      { "title": "実行環境の切り替え", "type": "figure" },
+      { "title": "CI への載せ方", "type": "chapter" }
+    ],
+    "quote": ["コードに現れない仕掛けこそ、", "テストで意図を残す。"],
+    "figure_caption": "接続先の切り替え",
+    "accent_offset": 7
+  },
+  {
+    "code": "vanilla-frontend",
+    "title": "ビルドなしのフロントエンド",
+    "description": "状態を1つに集め、描画を写像として書く。素の JS で足りる範囲。",
+    "published_at": "2026-02-14 00:00:00",
+    "cover": {
+      "line1": "ビルドなしの",
+      "line2": "フロントエンド",
+      "subtitle": "— 最小構成編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年2月14日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "状態と描画を分ける", "type": "chapter" },
+      { "title": "単方向データフロー", "type": "figure" },
+      { "title": "アニメーションは CSS へ", "type": "chapter" },
+      { "title": "入力の受け口を絞る", "type": "chapter" },
+      { "title": "先読みとキャッシュ", "type": "figure" },
+      { "title": "壊れたときの見せ方", "type": "chapter" }
+    ],
+    "quote": ["描画の入口が1つなら、", "追う場所も1つで済む。"],
+    "figure_caption": "状態から描画へ",
+    "accent_offset": 8
+  },
+  {
+    "code": "git-workflow",
+    "title": "読まれるコミットの作り方",
+    "description": "1コミット1意図。分け方と、後から直す手順。",
+    "published_at": "2026-01-09 00:00:00",
+    "cover": {
+      "line1": "読まれる",
+      "line2": "コミットの作り方",
+      "subtitle": "— 運用編 —",
+      "footer": "furusawa.work"
+    },
+    "colophon": {
+      "issued": "2026年1月9日 初版",
+      "author": "Yuuki Furusawa",
+      "publisher": "furusawa.work"
+    },
+    "chapters": [
+      { "title": "1コミット1意図", "type": "chapter" },
+      { "title": "ブランチの寿命", "type": "figure" },
+      { "title": "部分ステージ", "type": "chapter" },
+      { "title": "退避と積み直し", "type": "chapter" },
+      { "title": "レビューの単位", "type": "figure" },
+      { "title": "履歴を壊さない直し方", "type": "chapter" }
+    ],
+    "quote": ["差分は説明ではない。", "意図を書き添える。"],
+    "figure_caption": "ブランチの流れ",
+    "accent_offset": 9
+  }
+]

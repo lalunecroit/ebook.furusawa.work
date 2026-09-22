@@ -8,31 +8,47 @@ use Illuminate\Database\Seeder;
 /**
  * ビューア動作確認用のサンプル書籍。
  *
- * 画像の実体は cdn/public/books/sample/ に置いてある 10 枚の SVG。
- * BookController にベタ書きしていた内容をそのまま DB に移したもの。
+ * 書誌情報と章立ては database/seeders/data/sample-books.json に置いてある。
+ * ページ画像を作る tools/bin/generate-sample-pages.php も同じファイルを読むので、
+ * DB の内容と cdn/public/books/<code>/ の画像がずれない。
  */
 class BookSeeder extends Seeder
 {
+    /** 1冊あたりのページ数。画像の生成側と揃えている */
+    private const PAGES_PER_BOOK = 10;
+
     /**
      * 何度流しても同じ状態になるよう updateOrCreate で書く。
      */
     public function run(): void
     {
-        $book = Book::updateOrCreate(
-            ['code' => 'sample'],
-            [
-                'title' => 'Docker で作る電子書籍サービス',
-                'description' => 'フロントエンド編。ページめくりビューアの動作確認用サンプル。',
-                'pages_count' => 10,
-                'published_at' => '2026-09-20 00:00:00',
-            ],
-        );
-
-        foreach (range(1, 10) as $pageNo) {
-            $book->pages()->updateOrCreate(
-                ['page_no' => $pageNo],
-                ['img_path' => sprintf('/books/sample/page-%02d.svg', $pageNo)],
+        foreach ($this->catalog() as $data) {
+            $book = Book::updateOrCreate(
+                ['code' => $data['code']],
+                [
+                    'title' => $data['title'],
+                    'description' => $data['description'],
+                    'pages_count' => self::PAGES_PER_BOOK,
+                    'published_at' => $data['published_at'],
+                ],
             );
+
+            foreach (range(1, self::PAGES_PER_BOOK) as $pageNo) {
+                $book->pages()->updateOrCreate(
+                    ['page_no' => $pageNo],
+                    ['img_path' => sprintf('/books/%s/page-%02d.svg', $data['code'], $pageNo)],
+                );
+            }
         }
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function catalog(): array
+    {
+        $path = database_path('seeders/data/sample-books.json');
+
+        return json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
     }
 }

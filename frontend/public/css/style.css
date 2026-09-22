@@ -8,6 +8,7 @@
      5. ナビゲーション
      6. レスポンシブ
      7. 起動失敗の表示
+     8. 確認ダイアログ (最終ページ)
    ========================================================================== */
 
 /* -------------------------------------------------- 1. トークン */
@@ -68,6 +69,22 @@ body {
 
 .bar--top { border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .bar--bottom { border-top: 1px solid rgba(255, 255, 255, 0.08); }
+
+.bar__back {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.bar__back:hover,
+.bar__back:focus-visible {
+  color: var(--fg);
+  border-color: var(--accent);
+}
 
 .bar__title {
   flex: 1;
@@ -241,6 +258,15 @@ body {
 
 .nav[disabled] { opacity: 0 !important; cursor: default; pointer-events: none; }
 
+/* 最終ページの「進む」側。押せる状態のまま終端であることを見せる */
+.nav[data-end="true"] { opacity: 0.75; }
+.nav[data-end="true"] .nav__arrow {
+  background: rgba(0, 0, 0, 0.62);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 22px;
+}
+
 .nav__arrow {
   display: grid;
   place-items: center;
@@ -285,3 +311,59 @@ body {
   font-size: 14px;
   text-align: center;
 }
+
+/* -------------------------------------------------- 8. 確認ダイアログ */
+/* 最終ページでさらにめくろうとしたときに出す。<dialog> の既定枠は打ち消す */
+.modal {
+  margin: auto;                  /* showModal() 時に中央へ */
+  padding: 22px 24px 18px;
+  max-width: min(90vw, 360px);
+  border: 1px solid #3f454c;
+  border-radius: 10px;
+  background: #33373c;
+  color: var(--fg);
+  font-family: inherit;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modal__title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.modal__text {
+  margin: 0 0 20px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal__btn {
+  padding: 8px 16px;
+  border: 1px solid #4a515a;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.modal__btn:hover { border-color: var(--accent); }
+
+.modal__btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #10131a;
+  font-weight: 600;
+}
+.modal__btn--primary:hover { filter: brightness(1.08); }
