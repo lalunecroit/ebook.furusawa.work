@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Book;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +24,9 @@ class BookPageTest extends TestCase
 
         // 実際の cdn/public/ を汚さないよう、ディスクを差し替える
         Storage::fake('cdn');
+
+        // 管理画面はログイン必須。認証そのものの検証は AuthTest で行う
+        $this->actingAs(User::factory()->create());
     }
 
     /* ---------------------------------------------------------------- 画面 */

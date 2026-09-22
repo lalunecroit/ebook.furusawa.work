@@ -42,6 +42,9 @@
   }
   .bar__title { margin: 0; font-size: 15px; font-weight: 600; }
   .bar__title a { text-decoration: none; color: var(--fg); }
+  .bar__actions { display: flex; align-items: center; gap: 12px; }
+  .bar__actions form { margin: 0; }
+  .bar__user { font-size: 13px; color: var(--muted); }
 
   .wrap { max-width: 920px; margin: 0 auto; padding: 24px 20px 64px; }
 
@@ -142,7 +145,19 @@
 
 <header class="bar">
   <h1 class="bar__title"><a href="{{ route('admin.books.index') }}">ebook 管理画面</a></h1>
-  <a href="{{ route('admin.books.create') }}" class="btn btn--primary">＋ 新規登録</a>
+
+  {{-- ログイン画面ではヘッダーの操作を出さない --}}
+  @auth
+    <div class="bar__actions">
+      <a href="{{ route('admin.books.create') }}" class="btn btn--primary">＋ 新規登録</a>
+      <span class="bar__user">{{ auth()->user()->name }}</span>
+      {{-- ログアウトは状態を変える操作なので GET ではなく POST (CSRF 付き) --}}
+      <form method="POST" action="{{ route('admin.logout') }}">
+        @csrf
+        <button type="submit" class="btn">ログアウト</button>
+      </form>
+    </div>
+  @endauth
 </header>
 
 <main class="wrap">

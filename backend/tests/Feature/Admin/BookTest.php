@@ -3,12 +3,21 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Book;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class BookTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // 管理画面はログイン必須。認証そのものの検証は AuthTest で行う
+        $this->actingAs(User::factory()->create());
+    }
 
     /**
      * @return array<string, mixed>
