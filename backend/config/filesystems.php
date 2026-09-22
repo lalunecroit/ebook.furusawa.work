@@ -38,6 +38,19 @@ return [
             'report' => false,
         ],
 
+        /*
+         * ページ画像の置き場。ローカルでは cdn サービスが配信している
+         * cdn/public/ をそのままマウントしている。
+         * 本番 (GCS) へ移すときは driver を gcs に差し替える。
+         */
+        'cdn' => [
+            'driver' => 'local',
+            'root' => env('CDN_ROOT', '/var/www/cdn'),
+            'throw' => true,
+            'visibility' => 'public',
+            'directory_visibility' => 'public',
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

@@ -7,7 +7,7 @@
      4. ステージとページめくり ← ここがアニメーションの本体
      5. ナビゲーション
      6. レスポンシブ
-     7. 起動失敗の表示
+     7. ステージ中央の案内 (取得失敗 / ページなし)
      8. 確認ダイアログ (最終ページ)
    ========================================================================== */
 
@@ -294,23 +294,40 @@ body {
   .book__spinner { animation-duration: 2s; }
 }
 
-/* -------------------------------------------------- 7. 起動失敗の表示 */
-/* API から書誌情報を取れなかったときだけ出る。通常は存在しない要素 */
-.fatal {
+/* -------------------------------------------------- 7. ステージ中央の案内 */
+/* 読むものが出せないときだけ出る。通常は存在しない要素 */
+.notice {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   max-width: 80%;
-  margin: 0;
-  padding: 14px 18px;
-  border: 1px solid #5a3a3a;
+  padding: 18px 22px;
+  border: 1px solid var(--border, #3f454c);
   border-radius: 8px;
-  background: rgba(40, 24, 24, 0.9);
-  color: #f0c9c9;
+  background: rgba(30, 33, 37, 0.94);
   font-size: 14px;
   text-align: center;
 }
+
+.notice__text { margin: 0 0 12px; }
+
+.notice__link {
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+.notice__link:hover { text-decoration: underline; }
+
+/* 取得失敗。異常なので赤系で目立たせる */
+.notice--fatal {
+  border-color: #5a3a3a;
+  background: rgba(40, 24, 24, 0.9);
+  color: #f0c9c9;
+}
+
+/* ページ未登録。異常ではないので落ち着いた色にする */
+.notice--notice { color: var(--muted); }
 
 /* -------------------------------------------------- 8. 確認ダイアログ */
 /* 最終ページでさらにめくろうとしたときに出す。<dialog> の既定枠は打ち消す */

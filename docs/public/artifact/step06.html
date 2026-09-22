@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>管理画面ノート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / admin</div>
+    <h1>書き込む側を作る</h1>
+    <p class="tagline">カタログを書き換えてシーダーを流す運用から、ブラウザで登録・差し替えできる管理画面へ。書く経路が増えると、読む側で守っていた約束を書く側でも守る必要が出てくる。最後に鍵をかけた。</p>
+    <div class="meta">
+      <span><b>対象</b> backend/admin · frontend</span>
+      <span><b>画面</b> Blade</span>
+      <span><b>テスト</b> +50本 (計65)</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s1">管理画面の入口</a></li>
+      <li><a href="#s2">書誌情報の登録・編集</a></li>
+      <li><a href="#s3">画像がまだ無い書籍</a></li>
+      <li><a href="#s4">ページ画像のアップロード</a></li>
+      <li><a href="#s5">touch() がこの機能の要</a></li>
+      <li><a href="#s6">ドラッグ&amp;ドロップ</a></li>
+      <li><a href="#s7">GD とテスト</a></li>
+      <li><a href="#s8">ログイン認証</a></li>
+      <li><a href="#s9">動作確認</a></li>
+      <li><a href="#s10">ハマりどころと積み残し</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">管理画面の入口</h2>
+    <p class="lede">画面は backend に Blade で作った。フォーム送信・CSRF・バリデーションエラーの差し戻しを Laravel に任せられ、管理画面の一式を backend の中に閉じ込められる。</p>
+
+<pre><span class="c">// bootstrap/app.php</span>
+-&gt;withRouting(
+    ...
+    then: function (): void {
+        Route::middleware(<span class="s">'web'</span>)          <span class="c">← セッションと CSRF</span>
+            -&gt;prefix(<span class="s">'admin'</span>)
+            -&gt;name(<span class="s">'admin.'</span>)
+            -&gt;group(base_path(<span class="s">'routes/admin.php'</span>));
+    },
+)</pre>
+
+    <p>ルートは <code>web.php</code> と分けて <code>routes/admin.php</code> に置いた。<code>api</code> 側とはミドルウェアが違うので、ファイルごと分けておくと混ざらない。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>メソッド</th><th>パス</th><th>用途</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>GET</code></td><td><code>/admin/books</code></td><td>一覧（未公開も含む）</td></tr>
+          <tr><td><code>GET</code> / <code>POST</code></td><td><code>/admin/books/create</code> · <code>/admin/books</code></td><td>新規登録</td></tr>
+          <tr><td><code>GET</code> / <code>PUT</code></td><td><code>/admin/books/{book}/edit</code> · <code>/admin/books/{book}</code></td><td>編集</td></tr>
+          <tr><td><code>GET</code></td><td><code>/admin/books/{book}/pages</code></td><td>ページ画像の管理画面</td></tr>
+          <tr><td><code>POST</code></td><td><code>/admin/books/{book}/pages</code></td><td>画像のアップロード（追加・差し替え）</td></tr>
+          <tr><td><code>DELETE</code></td><td><code>/admin/books/{book}/pages/{page}</code></td><td>ページの削除</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="note__label">認証は §08 で入れた</span>
+      <p>当初は「上の <code>then:</code> に <code>-&gt;middleware('auth')</code> を1行足すだけ」と考えていたが、<strong>ログイン画面自体は未ログインで開けなければならない</strong>ので、そうはいかなかった。<code>routes/admin.php</code> の中で <code>guest</code> と <code>auth</code> に分けている。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">書誌情報の登録・編集</h2>
+    <p class="lede">コントローラは2行。SQL は Eloquent が組み立てる。</p>
+
+<pre>$book = Book::create($request-&gt;validated());   <span class="c">← 登録</span>
+$book-&gt;update($request-&gt;validated());          <span class="c">← 更新</span></pre>
+
+<pre><span class="c">-- 実際に発行された SQL</span>
+insert into `books` (`code`, `title`, `description`, `published_at`, `updated_at`, `created_at`) values (?, ?, ?, ?, ?, ?)
+update `books` set `title` = ?, `books`.`updated_at` = ? where `id` = ?</pre>
+
+    <p>UPDATE は<strong>変わった列だけ</strong>になっている。<code>Book</code> モデルに書いたのは設定だけで、<code>#[Fillable]</code> が「リストに無いキーを黙って捨てる」ことで、フォームに <code>is_active</code>（生成列）を仕込まれても書き込まれない。</p>
+
+    <h3>書籍コードの一意性はスキーマと同じ考え方で</h3>
+
+<pre><span class="s">'code'</span> =&gt; [
+    <span class="s">'required'</span>, <span class="s">'string'</span>, <span class="s">'max:64'</span>,
+    <span class="s">'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'</span>,
+    Rule::unique(<span class="s">'books'</span>, <span class="s">'code'</span>)
+        -&gt;whereNull(<span class="s">'deleted_at'</span>)    <span class="c">← 削除済みとは重複してよい</span>
+        -&gt;ignore($book),             <span class="c">← 編集中の自分自身は除く</span>
+],</pre>
+
+    <p>Step.03 で <code>(code, is_active)</code> の複合ユニークとして表現した約束を、フォームのバリデーションにも書いた。DB の制約だけに頼ると重複時に 500 になる。先に弾いて、入力を保ったまま差し戻すため。</p>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">画像がまだ無い書籍</h2>
+    <p class="lede">書誌情報だけ先に登録できるようになり、<strong>ページが0枚の書籍</strong>が公開側に出てくるようになった。API はすべて 200 で応答するが、画面が2か所崩れた。</p>
+
+    <h3>一覧: 表紙が無いとカードの高さが崩れる</h3>
+
+<pre>img.src = book.cover?.url ?? CONFIG.noImagePath;   <span class="c">← 'assets/no-image.svg'</span></pre>
+
+    <p>ページ画像と同じ <strong>800×1131</strong> の「No Image」SVG を置いた。<code>aspect-ratio: 800 / 1131</code> の枠に収まるので、全カードの高さがそろう（実測で全件 517px）。</p>
+
+    <h3>ビューア: 白紙のまま操作できない</h3>
+
+    <p><code>totalPages = 0</code> で起動すると、画像は <code>src=""</code>、ナビは両方無効、終端モーダルも出ない。<strong>エラーも出ないので「ただ壊れている」ようにしか見えない</strong>。起動時に判定して案内を出すようにした。</p>
+
+<pre>if (CONFIG.totalPages === <span class="s">0</span>) {
+  showEmpty();   <span class="c">← 「この書籍にはまだページがありません。」+ 一覧へ戻るリンク</span>
+  return;
+}</pre>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>クラス</th><th>用途</th><th>色</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>.notice--fatal</code></td><td>API 取得失敗（異常）</td><td>赤系</td></tr>
+          <tr><td><code>.notice--notice</code></td><td>ページ未登録（運用途中の正常な状態）</td><td>グレー</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>どちらにも一覧へ戻るリンクを付けた。Step.05 の最終ページと同じく、<strong>行き止まりに導線を置かない</strong>。</p>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">ページ画像のアップロード</h2>
+    <p class="lede">画像の実体は <code>cdn</code> サービスが配信している <code>cdn/public/</code> に書く。backend は自分のディレクトリしか見えていなかったので、マウントを渡した。</p>
+
+<pre><span class="c"># compose.yaml (backend)</span>
+volumes:
+  - ./backend:/app
+  - ./cdn/public:/var/www/cdn</pre>
+
+<pre><span class="c">// config/filesystems.php</span>
+<span class="s">'cdn'</span> =&gt; [
+    <span class="s">'driver'</span> =&gt; <span class="s">'local'</span>,
+    <span class="s">'root'</span> =&gt; env(<span class="s">'CDN_ROOT'</span>, <span class="s">'/var/www/cdn'</span>),
+    <span class="s">'throw'</span> =&gt; <span class="s">true</span>,
+],</pre>
+
+    <p><code>file_put_contents()</code> を直接書かず Storage を通すのは、<strong>本番で GCS に移すとき <code>driver</code> を差し替えるだけで済ませるため</strong>。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>ページ番号を決める</b><span>省略なら max + 1</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>古いファイルを消す</b><span>差し替えのとき</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>保存 → DB 更新</b><span>updateOrCreate + touch()</span></div>
+    </div>
+
+    <p>追加と差し替えは同じ <code>POST</code> にまとめ、<code>page_no</code> を送るかどうかで分けている。レスポンスは新規なら <strong>201</strong>、差し替えなら <strong>200</strong>。</p>
+
+    <h3>パスの先頭スラッシュ</h3>
+
+    <p>既存の <code>img_path</code> は <code>/books/sample/page-01.svg</code> と<strong>先頭スラッシュ付き</strong>で、公開 API はこれに CDN のベース URL を連結している。Storage のパスはルート相対なので、DB は先頭スラッシュ付き、ディスク操作のときだけ <code>ltrim($path, '/')</code> と役割を分けた。最初はスラッシュ無しで保存しかけており、そのままだと URL が <code>http://localhost:8082books/…</code> になるところだった。</p>
+
+    <h3>保存したファイルの権限</h3>
+
+    <p>最初の実装では、アップロードした画像が <strong>nginx から 403</strong> になることがあった。<code>Storage</code> の <code>local</code> ドライバは既定で <code>private</code> として書き込むため、ディレクトリが <code>0700</code>・ファイルが <code>0600</code> になり、<strong>書いた PHP と配信する nginx が別ユーザーだと読めない</strong>。</p>
+
+<pre><span class="s">'visibility'</span> =&gt; <span class="s">'public'</span>,              <span class="c">← ファイルを 0644 に</span>
+<span class="s">'directory_visibility'</span> =&gt; <span class="s">'public'</span>,    <span class="c">← ディレクトリを 0755 に</span></pre>
+
+    <p>「公開ディレクトリに置くのだから読めて当然」と考えたくなるが、<strong>書き込み側の既定は非公開</strong>。GCS に移す段階でも同じ話が出てくる（オブジェクトの公開設定）。</p>
+
+    <h3>削除は所有者を確認する</h3>
+
+<pre>abort_if($page-&gt;book_id !== $book-&gt;id, <span class="s">404</span>);</pre>
+
+    <p><code>{page}</code> は ID で引かれるので、URL の書籍部分を差し替えると<strong>別の書籍のページを消せてしまう</strong>。組み合わせが合わなければ 404。</p>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">touch() がこの機能の要</h2>
+    <p class="lede">同じ拡張子で差し替えると <code>img_path</code> は変わらない。Eloquent は「変更なし」と判断して UPDATE を発行せず、<code>updated_at</code> も動かない。</p>
+
+<pre>$page = $book-&gt;pages()-&gt;updateOrCreate([<span class="s">'page_no'</span> =&gt; $pageNo], [<span class="s">'img_path'</span> =&gt; $path]);
+$page-&gt;touch();   <span class="c">← これが無いと差し替えが読者に届かない</span></pre>
+
+    <p>画像 URL のキャッシュバスターは <code>?v=&lt;updated_at&gt;</code> で、CDN は Step.02 から「1年 + immutable」でキャッシュさせている。<code>touch()</code> が無いと URL が変わらず、ブラウザは古い画像を持ち続ける。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th></th><th>画像 URL</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>差し替え前</td><td><code>…/page-01.png?v=1790052491</code></td></tr>
+          <tr><td><code>touch()</code> なし</td><td><code>…/page-01.png?v=1790052491</code>（同じ。届かない）</td></tr>
+          <tr><td><code>touch()</code> あり</td><td><code>…/page-01.png?v=1790052503</code>（変わる。取り直される）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="note__label">書く経路が増えたら、約束も持ち込む</span>
+      <p>Step.02 のキャッシュ戦略、Step.03 の <code>ON UPDATE CURRENT_TIMESTAMP</code> と同じ約束を、管理画面の書き込み経路でも守っている。読む側だけで成り立っていた前提は、書く経路が増えるたびに確認し直す必要がある。</p>
+    </div>
+
+    <p>拡張子が変わる差し替え（PNG → JPEG など）ではファイル名も変わるので、保存前に古いファイルを消している。放置すると <code>page-01.png</code> と <code>page-01.jpg</code> が両方残る。</p>
+  </section>
+
+  <!-- ================================================== 6 -->
+  <section id="s6">
+    <h2 data-sec="§06">ドラッグ&amp;ドロップ</h2>
+    <p class="lede">上部の大きな領域に落とすと末尾に追加、各ページのサムネイルに落とすとそのページを差し替え。1枚ずつ受け付ける。</p>
+
+<pre>node.addEventListener(<span class="s">'dragover'</span>, (ev) =&gt; {
+  ev.preventDefault();    <span class="c">← これが無いと drop が発火せず、ブラウザが画像を開く</span>
+  node.classList.add(<span class="s">'is-over'</span>);
+});</pre>
+
+<pre>const body = new FormData();
+body.append(<span class="s">'image'</span>, file);
+if (pageNo) body.append(<span class="s">'page_no'</span>, pageNo);
+
+await fetch(uploadUrl, {
+  method: <span class="s">'POST'</span>,
+  headers: { <span class="s">'X-CSRF-TOKEN'</span>: token, Accept: <span class="s">'application/json'</span> },
+  body,
+});</pre>
+
+    <p><code>Content-Type</code> はあえて指定していない。<code>FormData</code> を渡すとブラウザが <code>multipart/form-data</code> の境界文字列ごと組み立てるので、<strong>手で書くと境界が欠けて壊れる</strong>。</p>
+
+    <p><code>Accept: application/json</code> を付けているので、検証に失敗すると Laravel はリダイレクトではなく <strong>422 + JSON</strong> を返し、画面はそのメッセージを表示する。<code>mimes</code> はファイル名ではなく<strong>中身から判定した MIME</strong> で検査し、保存時の拡張子も中身から推定したものを使う。アップロード時のファイル名は信用しない。</p>
+  </section>
+
+  <!-- ================================================== 7 -->
+  <section id="s7">
+    <h2 data-sec="§07">GD とテスト</h2>
+    <p class="lede">backend にも GD を入れた。イメージは +10MB（実測）で、管理画面用に別イメージを作る管理コストの方が大きい。</p>
+
+    <p>テストでも効いた。<code>UploadedFile::fake()-&gt;image()</code> は GD で本物の画像を生成するので、<strong>MIME 判定まで実際のバイト列で検証できる</strong>。GD が無い間はダミーファイルで代用していた。</p>
+
+<pre>protected function setUp(): void
+{
+    parent::setUp();
+    Storage::fake(<span class="s">'cdn'</span>);   <span class="c">← 実際の cdn/public/ を汚さない</span>
+}</pre>
+
+<pre>$first = ...-&gt;json(<span class="s">'page.url'</span>);
+$this-&gt;travel(<span class="s">2</span>)-&gt;seconds();   <span class="c">← updated_at は秒単位。同じ秒だと URL が一致する</span>
+$second = ...-&gt;json(<span class="s">'page.url'</span>);
+$this-&gt;assertNotSame($first, $second);</pre>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>クラス</th><th>本数</th><th>主な内容</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Admin\BookTest</code></td><td>19</td><td>一覧・登録・更新・コード重複（生存行のみ）・fillable 外の無視・404</td></tr>
+          <tr><td><code>Admin\BookPageTest</code></td><td>12</td><td>追加・差し替え・<strong>キャッシュバスターの更新</strong>・旧ファイル削除・422・所有者チェック</td></tr>
+          <tr><td><code>Admin\AuthTest</code></td><td>15</td><td>未ログイン時のリダイレクトと 401・ログイン成功/失敗・intended・セッション ID の再生成・試行回数の制限・ログアウト</td></tr>
+          <tr><td><code>Console\CreateAdminUserTest</code></td><td>4</td><td>作成・名前の省略・短いパスワード・重複メール。<strong>平文で保存されていないこと</strong>も確認</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>書いたテストが回帰を捕まえるかも、わざと実装を壊して確かめた。<code>BookRequest</code> から <code>-&gt;whereNull('deleted_at')</code> を消すと「削除済みの書籍とはコードが重複してよい」が、管理画面の一覧に <code>published()</code> を付けると「一覧には未公開と公開予約も出る」が、それぞれ落ちる。</p>
+  </section>
+
+  <!-- ================================================== 8 -->
+  <section id="s8">
+    <h2 data-sec="§08">ログイン認証</h2>
+    <p class="lede">誰でも開けた <code>/admin</code> に鍵をかける。Laravel 標準のセッション認証（<code>web</code> ガード + 既存の <code>users</code> テーブル）。Breeze は Vite / npm を持ち込むので使わず、必要な分だけ自前で書いた。</p>
+
+    <h3>auth はグループ全体ではなく機能ごとに付ける</h3>
+
+<pre><span class="c">// 未ログイン専用</span>
+Route::middleware(<span class="s">'guest'</span>)-&gt;group(function (): void {
+    Route::get(<span class="s">'/login'</span>, [AuthController::class, <span class="s">'create'</span>])-&gt;name(<span class="s">'login'</span>);
+    Route::post(<span class="s">'/login'</span>, [AuthController::class, <span class="s">'store'</span>])-&gt;name(<span class="s">'login.store'</span>);
+});
+
+<span class="c">// ここから下はログインが必要</span>
+Route::middleware(<span class="s">'auth'</span>)-&gt;group(function (): void {
+    Route::post(<span class="s">'/logout'</span>, [AuthController::class, <span class="s">'destroy'</span>])-&gt;name(<span class="s">'logout'</span>);
+    ...
+});</pre>
+
+    <p>行き先は <code>bootstrap/app.php</code> で固定した。セッション認証を使うのは管理画面だけなので迷う余地がない。</p>
+
+<pre>$middleware-&gt;redirectGuestsTo(fn () =&gt; route(<span class="s">'admin.login'</span>));
+$middleware-&gt;redirectUsersTo(fn () =&gt; route(<span class="s">'admin.books.index'</span>));</pre>
+
+    <h3>入れた安全策</h3>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>対策</th><th>内容</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ログイン試行の制限</td><td>メールアドレス + IP 単位で5回失敗するとロック。ロック中は正しいパスワードでも入れない</td></tr>
+          <tr><td>エラー文言を区別しない</td><td>「パスワード違い」も「存在しないメールアドレス」も同じ文言</td></tr>
+          <tr><td>セッション固定攻撃の対策</td><td>ログイン時に <code>session()-&gt;regenerate()</code> で ID を作り直す</td></tr>
+          <tr><td>ログアウトは POST のみ</td><td>GET だと <code>&lt;img src="/admin/logout"&gt;</code> で他サイトから強制ログアウトさせられる</td></tr>
+          <tr><td>intended リダイレクト</td><td>ログイン後、開こうとしていたページに戻る</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="note__label">失敗の理由を教えない</span>
+      <p>「このメールアドレスは登録されていません」と返すと、<strong>登録済みのアドレスを総当たりで特定できてしまう</strong>。どちらが違っても同じ文言にする。</p>
+    </div>
+
+    <h3>管理者は artisan コマンドで作る</h3>
+
+<pre>docker compose exec backend php artisan admin:user admin@example.com --name=管理者
+<span class="c"># → パスワードを対話式で入力（8文字以上）</span></pre>
+
+    <p>登録画面は用意しない（誰でも管理者になれてしまう）。パスワードを引数で受け取らないのは、<strong>シェルの履歴に残る</strong>ため。<code>User</code> の <code>casts()</code> で <code>password =&gt; 'hashed'</code> になっているので、コマンド側でハッシュ化は書いていない。</p>
+  </section>
+
+  <!-- ================================================== 9 -->
+  <section id="s9">
+    <h2 data-sec="§09">動作確認</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>確認</th><th>結果</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>書籍の新規登録</td><td>302 → 編集画面、フラッシュ表示、DB に保存</td></tr>
+          <tr><td>更新</td><td>変わった列だけの UPDATE。公開日時を空にすると未公開に戻る</td></tr>
+          <tr><td>バリデーション</td><td>重複・形式・必須漏れを検出し、入力を保って差し戻し</td></tr>
+          <tr><td>CSRF なしの POST</td><td><strong>419</strong></td></tr>
+          <tr><td>画像のアップロード</td><td>201、<code>cdn/public/books/…</code> に保存、CDN から配信、公開 API に即反映</td></tr>
+          <tr><td>差し替え</td><td><code>?v=</code> が更新される</td></tr>
+          <tr><td>拡張子の変わる差し替え</td><td>古いファイルが消える</td></tr>
+          <tr><td>ブラウザでの D&amp;D</td><td><code>dragover</code> でハイライト、<code>drop</code> でアップロード</td></tr>
+          <tr><td>表紙の無い書籍（一覧）</td><td>「No Image」、カードの高さがそろう</td></tr>
+          <tr><td>ページの無い書籍（ビューア）</td><td>案内と一覧へのリンクを表示</td></tr>
+          <tr><td>未ログインで管理画面</td><td>すべて 302 → <code>/admin/login</code>。<code>fetch</code> からは 401</td></tr>
+          <tr><td>ログイン</td><td>開こうとしていたページへ戻る。セッション ID が変わる</td></tr>
+          <tr><td>6回目のログイン試行</td><td>「試行回数が多すぎます。59 秒後に…」</td></tr>
+          <tr><td><code>GET /admin/logout</code></td><td><strong>405</strong></td></tr>
+          <tr><td>アップロードした画像の権限</td><td>ディレクトリ 0755 / ファイル 0644</td></tr>
+          <tr><td>テスト</td><td><strong>65 passed / 222 assertions</strong>（sqlite・MySQL とも）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================== 10 -->
+  <section id="s10">
+    <h2 data-sec="§10">ハマりどころと積み残し</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>症状</th><th>原因</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>差し替えても読者に古い画像が出る</td><td>同じパスへの上書きでは <code>updated_at</code> が動かない。<code>touch()</code> で進める</td></tr>
+          <tr><td>差し替えで古いファイルが残る</td><td>拡張子が変わるとファイル名も変わる。保存前に消す</td></tr>
+          <tr><td>URL が <code>…8082books/…</code> になる</td><td>DB は先頭スラッシュ付き、Storage はルート相対。境界で変換する</td></tr>
+          <tr><td>ドロップしてもブラウザが画像を開くだけ</td><td><code>dragover</code> で <code>preventDefault()</code> していない</td></tr>
+          <tr><td>アップロードがサーバで壊れる</td><td><code>FormData</code> に <code>Content-Type</code> を手で指定した</td></tr>
+          <tr><td><code>GD extension is not installed</code></td><td>backend に GD が無かった</td></tr>
+          <tr><td>ページ0枚の書籍がビューアで白紙</td><td>起動時に <code>totalPages === 0</code> を判定していなかった</td></tr>
+          <tr><td>アップロードした画像が nginx から 403</td><td><code>local</code> ドライバの既定は <code>private</code>（0700 / 0600）。<code>visibility</code> を <code>public</code> にする</td></tr>
+          <tr><td><code>auth</code> をグループ全体に付けるとログインできない</td><td>ログイン画面自体が保護され、無限にリダイレクトする。<code>guest</code> と <code>auth</code> を分ける</td></tr>
+          <tr><td>テストのメソッド名が <code>_i_d</code> のように崩れる</td><td>Pint の <code>php_unit_method_casing</code> が大文字を分割する。英字は小文字で書く</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>積み残し</h3>
+    <ul>
+      <li><strong><code>users</code> テーブルの全員が管理者</strong>。読者向けのアカウントを作る段階では、権限の列か別ガードが要る</li>
+      <li><strong>ファイル保存と DB 更新が非原子的</strong>。途中で失敗すると画像が失われうる。新ファイルを別名で保存し、DB 確定後に古いファイルを消す順序が定石</li>
+      <li><strong>同時アップロードの競合</strong>。2人が同時に末尾へ追加すると同じ <code>max + 1</code> を計算し、片方が一意制約違反になる。<code>lockForUpdate()</code> 付きのトランザクションで番号を採る</li>
+      <li>ページ番号の振り直しが無い（途中を削除すると番号が飛ぶ）</li>
+      <li>SVG を受け入れている。スクリプトを埋め込める形式なので、不特定多数が使う運用の前に見直す</li>
+      <li>バリデーションメッセージが英日混在</li>
+    </ul>
+
+    <h3>次のステップ</h3>
+    <ul>
+      <li>管理画面を <code>admin.ebook.furusawa.work</code> として分離（同一イメージ・別 Cloud Run サービス）</li>
+      <li>アップロード処理の原子性と同時実行対策</li>
+      <li>画像のリサイズ・サムネイル生成</li>
+    </ul>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">
+    ebook.furusawa.work — Step.06 / admin<br>
+    Laravel 13.32 · PHP 8.4 (php-fpm + GD) · Blade · セッション認証
+  </p>
+
+</div>
+</body>
+</html>
