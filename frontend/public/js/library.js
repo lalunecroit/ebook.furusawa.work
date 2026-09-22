@@ -21,6 +21,9 @@ const CONFIG = {
 
   /** 読む画面。カードのリンク先 */
   readerPath: 'reader.html',
+
+  /** 表紙が未登録のときに出す画像。ページ画像と同じ縦横比にしてある */
+  noImagePath: 'assets/no-image.svg',
 };
 
 const state = {
@@ -79,16 +82,15 @@ function buildCard(book) {
   a.className = 'card';
   a.href = `${CONFIG.readerPath}?book=${encodeURIComponent(book.code)}`;
 
-  // 表紙。API が cover を返さない本 (ページ未登録) でも崩れないようにする
-  if (book.cover?.url) {
-    const img = document.createElement('img');
-    img.className = 'card__cover';
-    img.src = book.cover.url;
-    img.alt = '';          // 書名は下のテキストにあるので画像は装飾扱い
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    a.append(img);
-  }
+  // 表紙。ページ未登録の本は cover が null で返るので、その場合は
+  // 同じ縦横比のプレースホルダを出す (カードの高さを揃えるため)
+  const img = document.createElement('img');
+  img.className = 'card__cover';
+  img.src = book.cover?.url ?? CONFIG.noImagePath;
+  img.alt = '';          // 書名は下のテキストにあるので画像は装飾扱い
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  a.append(img);
 
   const body = document.createElement('div');
   body.className = 'card__body';
