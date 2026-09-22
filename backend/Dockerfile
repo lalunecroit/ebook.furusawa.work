@@ -1,15 +1,18 @@
-# ローカル開発用の API コンテナ。
-# 本番に寄せる段階では php-fpm + nginx (または RoadRunner/Octane) に差し替える。
-# ここでは artisan serve をそのまま使い、ソースは compose 側で bind mount する。
-FROM php:8.4-cli-alpine
+# API コンテナ (php-fpm)。
+# HTTP は前段の nginx (backend-web サービス) が受け、PHP の実行だけを担当する。
+# artisan serve は開発用のシングルプロセスサーバなので使わない。
+FROM php:8.4-fpm-alpine
 
-# pdo_mysql は DB を入れる段階で必要になるので先に入れておく
+# pdo_mysql は DB 接続に必要
 RUN docker-php-ext-install pdo_mysql
 
 # 起動時の composer install 用 (公式イメージから composer だけ取り込む)。
 # dist の展開に unzip、フォールバックの source 取得に git を使う
 RUN apk add --no-cache git unzip
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+# clear_env = no など、このアプリ向けの php-fpm 設定
+COPY php-fpm.d/zz-app.conf /usr/local/etc/php-fpm.d/zz-app.conf
 
 WORKDIR /app
 
@@ -22,7 +25,7 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-EXPOSE 8000
+# nginx から fastcgi で叩かれるポート。ホストには公開しない
+EXPOSE 9000
 
-# 0.0.0.0 で待たないとコンテナ外から届かない
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["php-fpm"]
