@@ -33,7 +33,10 @@
           </td>
           <td class="num">{{ $book->pages_count }}</td>
           <td class="num">{{ $book->published_at?->format('Y-m-d H:i') ?? '—' }}</td>
-          <td><a href="{{ route('admin.books.edit', $book) }}">編集</a></td>
+          <td>
+            <a href="{{ route('admin.books.edit', $book) }}">編集</a>
+            <a href="{{ route('admin.books.pages.index', $book) }}" style="margin-left:10px">画像</a>
+          </td>
         </tr>
       @empty
         <tr><td colspan="6" style="color:var(--muted)">書籍がまだありません。</td></tr>

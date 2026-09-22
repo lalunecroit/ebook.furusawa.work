@@ -39,9 +39,14 @@ services:
     volumes:
       # 開発中はソースをそのまま反映させる (vendor もホスト側のものを使う)
       - ./backend:/app
+      # 管理画面からページ画像を書き込むため、cdn の公開ディレクトリを渡す。
+      # 本番では GCS になるので、この mount は開発用。
+      - ./cdn/public:/var/www/cdn
     environment:
       # 画像URLの組み立てに使うベースURL。ブラウザから見えるホスト名で渡す
       CDN_BASE_URL: "http://localhost:8082"
+      # 書き込み先 (filesystems.php の cdn ディスク)
+      CDN_ROOT: /var/www/cdn
       APP_ENV: local
       APP_DEBUG: "true"
       APP_TIMEZONE: Asia/Tokyo

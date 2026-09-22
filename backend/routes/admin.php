@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BookController;
+use App\Http\Controllers\Admin\BookPageController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -23,3 +24,8 @@ Route::get('/books/create', [BookController::class, 'create'])->name('books.crea
 Route::post('/books', [BookController::class, 'store'])->name('books.store');
 Route::get('/books/{book}/edit', [BookController::class, 'edit'])->name('books.edit');
 Route::put('/books/{book}', [BookController::class, 'update'])->name('books.update');
+
+// ページ画像。アップロードと削除は画面から fetch で叩くので JSON を返す
+Route::get('/books/{book}/pages', [BookPageController::class, 'index'])->name('books.pages.index');
+Route::post('/books/{book}/pages', [BookPageController::class, 'store'])->name('books.pages.store');
+Route::delete('/books/{book}/pages/{page}', [BookPageController::class, 'destroy'])->name('books.pages.destroy');

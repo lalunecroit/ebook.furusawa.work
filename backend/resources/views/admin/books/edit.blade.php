@@ -13,6 +13,7 @@
 
     <div class="actions">
       <button type="submit" class="btn btn--primary">更新する</button>
+      <a href="{{ route('admin.books.pages.index', $book) }}" class="btn">ページ画像の管理</a>
       <a href="{{ route('admin.books.index') }}" class="btn">一覧へ戻る</a>
       <span style="color:var(--muted);font-size:13px">
         ページ数 {{ $book->pages_count }}／登録 {{ $book->created_at?->format('Y-m-d H:i') }}
