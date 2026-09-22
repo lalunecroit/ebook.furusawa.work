@@ -47,6 +47,8 @@ return [
             'driver' => 'local',
             'root' => env('CDN_ROOT', '/var/www/cdn'),
             'throw' => true,
+            'visibility' => 'public',
+            'directory_visibility' => 'public',
         ],
 
         'public' => [
