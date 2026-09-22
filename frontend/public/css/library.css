@@ -1,0 +1,205 @@
+/* ==========================================================================
+   書籍一覧 (index.html) のスタイル
+   構成:
+     1. デザイントークン (ビューアと共通の配色)
+     2. ベース
+     3. ヘッダー
+     4. 一覧グリッド
+     5. カード
+     6. ページ送り
+     7. 状態表示 (読み込み中 / 空 / エラー)
+   ========================================================================== */
+
+/* -------------------------------------------------- 1. トークン */
+:root {
+  --bg: #2a2d31;
+  --bg-card: #33373c;
+  --bg-bar: rgba(20, 22, 25, 0.92);
+  --fg: #e8eaed;
+  --muted: #9aa4af;
+  --accent: #6ea0ff;
+  --border: #3f454c;
+  --card-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --bar-height: 52px;
+}
+
+/* -------------------------------------------------- 2. ベース */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  line-height: 1.7;
+  -webkit-text-size-adjust: 100%;
+}
+
+a { color: inherit; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------- 3. ヘッダー */
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: var(--bar-height);
+  padding: 0 20px;
+  background: var(--bg-bar);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.bar__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.bar__count {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------- 4. 一覧グリッド */
+.library {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+
+.grid {
+  display: grid;
+  /* 画面幅に応じて 1〜4 列。カードの最小幅だけ決めて列数は任せる */
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 22px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* -------------------------------------------------- 5. カード */
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.card__cover {
+  display: block;
+  width: 100%;
+  /* 生成しているページ画像と同じ A5 相当の比率 */
+  aspect-ratio: 800 / 1131;
+  object-fit: cover;
+  background: #1f2226;
+  box-shadow: var(--card-shadow);
+}
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 16px;
+  flex: 1;
+}
+
+.card__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.card__desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  /* 3行で打ち切る */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.card__meta {
+  margin-top: auto;
+  padding-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------- 6. ページ送り */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.pager__btn {
+  padding: 8px 18px;
+  background: var(--bg-card);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pager__btn:hover:not(:disabled) { border-color: var(--accent); }
+.pager__btn:disabled { opacity: 0.35; cursor: default; }
+
+.pager__status {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------- 7. 状態表示 */
+.state {
+  margin: 48px auto;
+  max-width: 520px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.state--error {
+  border-left: 3px solid #d08a3a;
+  color: #f0c9c9;
+  text-align: left;
+}

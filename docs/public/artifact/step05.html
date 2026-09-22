@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>書籍一覧ノート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / frontend + backend</div>
+    <h1>1冊から10冊へ</h1>
+    <p class="tagline">サンプルを増やしたら一覧が要る。一覧を作ったら、ビューアとの境界とページの終端を作り直すことになった。</p>
+    <div class="meta">
+      <span><b>対象</b> tools/ · backend/ · frontend/</span>
+      <span><b>書籍</b> 1 → 10冊</span>
+      <span><b>コミット</b> 4本</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s1">サンプル生成を PHP へ</a></li>
+      <li><a href="#s2">書誌情報を1つのカタログに</a></li>
+      <li><a href="#s3">書籍一覧 API</a></li>
+      <li><a href="#s4">一覧とビューアを分ける</a></li>
+      <li><a href="#s5">最終ページの終端マーク</a></li>
+      <li><a href="#s6">動作確認</a></li>
+      <li><a href="#s7">ハマりどころと積み残し</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">サンプル生成を PHP へ</h2>
+    <p class="lede">これまで <code>tools/generate_dummy_pages.py</code> でページ画像を作っていた。バックエンドは PHP なので、言語を揃えて書き直した。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>Python 版</b><span>tools/generate_dummy_pages.py</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>PHP 版</b><span>tools/bin/generate-sample-pages.php</span></div>
+    </div>
+
+<pre><span class="c"># compose.yaml</span>
+tools:
+  build: ./tools
+  profiles: [<span class="s">"tools"</span>]      <span class="c">← 通常の up では起動しない</span>
+  volumes:
+    - .:/work</pre>
+
+<pre>docker compose run --rm tools                                   <span class="c"># 全冊生成</span>
+docker compose run --rm tools php tools/bin/generate-sample-pages.php --only=sample</pre>
+
+    <p><code>profiles</code> を付けているのは、この処理が<strong>常駐するサービスではなく CLI ツール</strong>だから。<code>docker compose up -d</code> の対象から外れ、必要なときだけ <code>run</code> で起動する。</p>
+
+    <div class="note">
+      <span class="note__label">出力は移植前と一致することを確認済み</span>
+      <p>Python 版が生成した既存の <code>sample</code> 10枚と、PHP 版の出力を <code>diff</code> したところ<strong>バイト単位で一致</strong>した。言語を変えても見た目は変わっていない。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">書誌情報を1つのカタログに</h2>
+    <p class="lede">画像生成スクリプトと DB シーダーが同じ書誌情報を別々に持つと、いずれ食い違う。1つの JSON にまとめて、両方がそれを読む形にした。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>sample-books.json</b><span>書誌情報 + 章立て</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>generate-sample-pages.php</b><span>画像を作る</span></div>
+    </div>
+    <div class="flow">
+      <div class="flow__box"><b>sample-books.json</b><span>(同じファイル)</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>BookSeeder</b><span>DB に入れる</span></div>
+    </div>
+
+<pre>{
+  <span class="s">"code"</span>: <span class="s">"compose-basics"</span>,
+  <span class="s">"title"</span>: <span class="s">"compose で組むローカル環境"</span>,
+  <span class="s">"published_at"</span>: <span class="s">"2026-08-05 00:00:00"</span>,
+  <span class="s">"chapters"</span>: [
+    { <span class="s">"title"</span>: <span class="s">"サービスの切り分け"</span>, <span class="s">"type"</span>: <span class="s">"chapter"</span> },
+    { <span class="s">"title"</span>: <span class="s">"依存と起動順序"</span>, <span class="s">"type"</span>: <span class="s">"figure"</span> },
+    ...
+  ]
+}</pre>
+
+    <p>10冊分を用意し、公開日をわざとばらした（2026-01 〜 2026-09）。一覧 API の並び順を確認するため。</p>
+
+<pre><span class="c">// BookSeeder</span>
+foreach ($this-&gt;catalog() as $data) {
+    $book = Book::updateOrCreate([<span class="s">'code'</span> =&gt; $data[<span class="s">'code'</span>]], [...]);
+
+    foreach (range(<span class="s">1</span>, self::PAGES_PER_BOOK) as $pageNo) {
+        $book-&gt;pages()-&gt;updateOrCreate(
+            [<span class="s">'page_no'</span> =&gt; $pageNo],
+            [<span class="s">'img_path'</span> =&gt; sprintf(<span class="s">'/books/%s/page-%02d.svg'</span>, $data[<span class="s">'code'</span>], $pageNo)],
+        );
+    }
+}</pre>
+
+    <p><code>updateOrCreate</code> なので、何度流しても同じ状態になる。</p>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">書籍一覧 API</h2>
+
+<pre>GET /api/books?per_page=20&amp;page=1</pre>
+
+<pre>{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"code"</span>: <span class="s">"sample"</span>,
+      <span class="s">"title"</span>: <span class="s">"Docker で作る電子書籍サービス"</span>,
+      <span class="s">"total_pages"</span>: <span class="s">10</span>,
+      <span class="s">"cover"</span>: { <span class="s">"url"</span>: <span class="s">"http://localhost:8082/books/sample/page-01.svg?v=..."</span> }
+    }
+  ],
+  <span class="s">"links"</span>: { ... },
+  <span class="s">"meta"</span>: { <span class="s">"current_page"</span>: <span class="s">1</span>, <span class="s">"last_page"</span>: <span class="s">1</span>, <span class="s">"per_page"</span>: <span class="s">20</span>, <span class="s">"total"</span>: <span class="s">10</span> }
+}</pre>
+
+    <p class="lede">設計判断は3点。</p>
+
+    <p><strong>ページ一覧を含めない。</strong>詳細 (<code>BookResource</code>) は本文10ページ分の URL を全部返すが、一覧で同じことをすると 20冊で200件になる。代わりに表紙だけを返す <code>BookListResource</code> を新設した。</p>
+
+<pre>public function cover(): HasOne
+{
+    return $this-&gt;hasOne(BookPage::class)-&gt;where(<span class="s">'page_no'</span>, <span class="s">1</span>);
+}</pre>
+
+    <p><strong><code>total_pages</code> は <code>pages_count</code> カラムをそのまま使う。</strong>詳細は実際の行数を数えているが (差し替え直後のズレを避けるため、Step.04参照)、一覧で1冊ごとに <code>COUNT</code> すると本数分クエリが増える。<code>pages_count</code> はまさにこの非正規化のために持たせたカラム。</p>
+
+    <p><strong>公開判定は scope に切り出す。</strong></p>
+
+<pre>public function scopePublished(Builder $query): Builder
+{
+    return $query-&gt;whereNotNull(<span class="s">'published_at'</span>)
+        -&gt;where(<span class="s">'published_at'</span>, <span class="s">'&lt;='</span>, now());
+}</pre>
+
+    <p><code>published_at</code> が null (未公開) または未来日時 (公開予約) の本は一覧に出さない。Step.03 で張った索引がここで効く。</p>
+
+<pre>$books = Book::published()
+    -&gt;with(<span class="s">'cover'</span>)
+    -&gt;orderByDesc(<span class="s">'published_at'</span>)
+    -&gt;orderByDesc(<span class="s">'id'</span>)          <span class="c">← 公開日時が同着でも並びが安定する</span>
+    -&gt;paginate($perPage)
+    -&gt;withQueryString();</pre>
+
+    <p>発行されるクエリは3本 (件数・本体・表紙の一括取得) で、N+1 は起きない。</p>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">一覧とビューアを分ける</h2>
+
+    <div class="flow">
+      <div class="flow__box"><b>変更前</b><span>index.html = ビューア本体</span></div>
+    </div>
+    <div class="flow">
+      <div class="flow__box"><b>変更後</b><span>index.html = 書籍一覧</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>変更後</b><span>reader.html = ビューア本体</span></div>
+    </div>
+
+    <p>一覧側 (<code>js/library.js</code>) は <code>/api/books</code> を取得してカードを並べるだけの薄い作り。カードのリンク先は <code>reader.html?book=&lt;code&gt;</code>。</p>
+
+    <p>ビューア側 (<code>reader.js</code>) は URL のクエリから開く本を決めるようにした。</p>
+
+<pre>const bookCode = new URLSearchParams(location.search).get(<span class="s">'book'</span>) || <span class="s">'sample'</span>;
+
+const CONFIG = {
+  api: { base: <span class="s">'http://localhost:8000/api'</span>, code: bookCode },
+  storageKey: <span class="s">`ebook:last-page:${bookCode}`</span>,   <span class="c">← しおりも本ごとに分ける</span>
+  ...
+};</pre>
+
+    <p><code>?book=</code> が無ければ <code>sample</code> にフォールバックするので、直接 <code>reader.html</code> を開いた場合の挙動は変えていない。</p>
+
+<pre>&lt;a class=<span class="s">"bar__back"</span> href=<span class="s">"index.html"</span> title=<span class="s">"書籍一覧へ戻る"</span>&gt;← 一覧&lt;/a&gt;</pre>
+
+    <p>ヘッダーに一覧へ戻るリンクを追加した。</p>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">最終ページの終端マーク</h2>
+    <p class="lede">最初は「最終ページで進む方向のナビボタンを無効化し、クリックしたら確認ダイアログを出す」という形にした。動かなかった。</p>
+
+    <div class="note note--warn">
+      <span class="note__label">無効化したボタンはクリックを受け付けない</span>
+      <p><code>disabled</code> にした要素は <code>pointer-events: none</code> でクリックが届かず、ダイアログが開かなかった。行き止まりでボタンごと反応が消えるのは、使い勝手としても良くない。</p>
+    </div>
+
+    <p>方針を変え、<strong>最終ページの「進む」側は押せる状態のまま、記号を終端マーク (<code>⇥</code> / 右綴じなら <code>⇤</code>) に変える</strong>形にした。</p>
+
+<pre>function updateNav(btn, side) {
+  const delta = deltaForSide(side);
+  const atEnd = delta &gt; 0 &amp;&amp; state.current === CONFIG.totalPages;
+
+  btn.disabled = !atEnd &amp;&amp; !isReachable(state.current + delta);
+  btn.dataset.end = atEnd ? <span class="s">'true'</span> : <span class="s">'false'</span>;
+
+  const arrow = btn.querySelector(<span class="s">'.nav__arrow'</span>);
+  arrow.textContent = atEnd
+    ? (side === <span class="s">'left'</span> ? <span class="s">'⇤'</span> : <span class="s">'⇥'</span>)
+    : (side === <span class="s">'left'</span> ? <span class="s">'‹'</span> : <span class="s">'›'</span>);
+}</pre>
+
+    <p>クリックすると <code>&lt;dialog&gt;</code> の <code>showModal()</code> で確認を出す。</p>
+
+<pre>function move(delta) {
+  const target = state.current + delta;
+
+  if (delta &gt; 0 &amp;&amp; state.current === CONFIG.totalPages) {
+    openEndDialog();
+    return;
+  }
+  if (!isReachable(target)) return;
+  goTo(target);
+}</pre>
+
+    <p>ナビボタン・キーボード (→ / PageDown / Space)・スワイプはすべて <code>move()</code> を経由するため、<strong>入力手段ごとに分岐を書く必要がない</strong>。<code>&lt;dialog&gt;</code> の <code>showModal()</code> を使うことで、フォーカスの閉じ込めと Esc での終了はブラウザに任せている。</p>
+  </section>
+
+  <!-- ================================================== 6 -->
+  <section id="s6">
+    <h2 data-sec="§06">動作確認</h2>
+
+<pre>docker compose run --rm tools                                  <span class="c"># 10冊分の画像を生成</span>
+docker compose exec backend php artisan migrate:fresh --seed   <span class="c"># 10冊分をDBへ</span></pre>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>確認</th><th>結果</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>GET /api/books</code></td><td>10冊、<code>published_at</code> の新しい順</td></tr>
+          <tr><td>発行クエリ</td><td>3本 (COUNT + 本体 + 表紙の一括取得)。N+1 なし</td></tr>
+          <tr><td>ページング</td><td><code>?per_page=3</code> で <code>last_page: 4</code>、<code>links.next</code> も正しい</td></tr>
+          <tr><td>バリデーション</td><td><code>per_page=0</code> / <code>101</code> / <code>abc</code> はいずれも 422</td></tr>
+          <tr><td>未公開・公開予約・削除済み</td><td>一覧に出ない (テストで確認)</td></tr>
+          <tr><td>一覧のカード</td><td>10枚。リンク先は <code>reader.html?book=&lt;code&gt;</code></td></tr>
+          <tr><td><code>reader.html?book=laravel-api</code></td><td>該当する書誌情報・画像・ページ数で表示</td></tr>
+          <tr><td><code>reader.html</code> (パラメータなし)</td><td>従来どおり <code>sample</code> にフォールバック</td></tr>
+          <tr><td>最終ページのナビ</td><td>記号が終端マークに変化。クリックでモーダルが開く</td></tr>
+          <tr><td>途中ページ・先頭ページ</td><td>従来どおり反応 (モーダルは出ない)</td></tr>
+          <tr><td>新規テスト</td><td>7本 (<code>BookIndexTest</code>) 追加、全体で 15 passed</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================== 7 -->
+  <section id="s7">
+    <h2 data-sec="§07">ハマりどころと積み残し</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>症状</th><th>原因</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>最終ページでナビをクリックしても何も起きない</td><td><code>disabled</code> にした要素は <code>pointer-events: none</code> で押せない。無効化ではなく見た目を変える方針にした</td></tr>
+          <tr><td>一覧で1冊ごとにクエリが増える</td><td><code>total_pages</code> を実数で数えると本数分 COUNT が走る。一覧は <code>pages_count</code> カラムをそのまま使う</td></tr>
+          <tr><td>ページ送りの途中で順序が揺れる</td><td>公開日時が同着の本がある。<code>orderByDesc('id')</code> を副次キーに足して安定させる</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>積み残し</h3>
+    <ul>
+      <li>一覧・詳細ともに検索や章立てでの絞り込みは無い</li>
+      <li>書影のリサイズ・最適化は未対応 (<code>tools</code> コンテナに GD を入れてあるので、次はここが使い道)</li>
+      <li>しおりのサーバ保存 (<code>localStorage</code> のまま)</li>
+    </ul>
+
+    <h3>次のステップ</h3>
+    <ul>
+      <li>認証 (<code>users</code> テーブルは雛形のまま残してある)</li>
+      <li>しおりのサーバ保存</li>
+      <li>書影のサムネイル生成</li>
+    </ul>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">
+    ebook.furusawa.work — Step.05 / frontend + backend<br>
+    Laravel 13.32 · PHP 8.4 · Vanilla JS
+  </p>
+
+</div>
+</body>
+</html>

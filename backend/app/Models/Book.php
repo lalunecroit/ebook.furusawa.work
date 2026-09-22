@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -77,5 +78,33 @@ class Book extends Model
     public function pages(): HasMany
     {
         return $this->hasMany(BookPage::class);
+    }
+
+    /**
+     * 表紙 (1ページ目)。
+     *
+     * 一覧では全ページを読む必要がないので、1件だけ取る関連を別に用意している。
+     * with('cover') で 1 クエリにまとまる。
+     *
+     * @return HasOne<BookPage, $this>
+     */
+    public function cover(): HasOne
+    {
+        return $this->hasOne(BookPage::class)->where('page_no', 1);
+    }
+
+    /**
+     * 公開済みに絞る。
+     *
+     * published_at は「null = 未公開」「未来日時 = 公開予約」という約束なので、
+     * 現在時刻までのものだけを通す。索引 (books_published_at_index) が効く。
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->whereNotNull('published_at')
+            ->where('published_at', '<=', now());
     }
 }
