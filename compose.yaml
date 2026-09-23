@@ -52,6 +52,9 @@ services:
       CDN_ROOT: /var/www/cdn
       APP_ENV: local
       APP_DEBUG: "true"
+      # 絶対URLの基点。リクエストがある間はリクエスト側が優先されるので、
+      # 効くのは artisan など CLI から URL を作るとき (step07 の 8)
+      APP_URL: "http://localhost:8000"
       APP_TIMEZONE: Asia/Tokyo
       # 接続先は db サービス。.env より環境変数が優先されるので、
       # .env が sqlite のままでもコンテナ内では MySQL に繋がる
