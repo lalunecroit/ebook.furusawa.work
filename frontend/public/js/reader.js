@@ -43,9 +43,9 @@
 const bookCode = new URLSearchParams(location.search).get('book') || 'sample';
 
 const CONFIG = {
-  /** バックエンド API。ホストが変わるのはここだけ */
+  /** バックエンド API。接続先は js/config.js がホスト名から決める */
   api: {
-    base: 'http://localhost:8000/api',
+    base: window.APP_CONFIG.apiBase,
     code: bookCode,
   },
 
