@@ -7,6 +7,16 @@
 # (APP_KEY を起動のたびに作ると暗号化済みデータが読めなくなる = step07 の 5)。
 set -e
 
+# 何を起動するかで必要な準備が変わる。
+#   web     ... Web サーバ本体 (CMD の supervisord)。nginx の設定生成まで要る
+#   oneshot ... Cloud Run Jobs から artisan を一度だけ叩く使い方。
+#               マイグレーションはこちらで流す (step07 の 10)。
+#               Web 用の準備は不要で、要求する環境変数も少なくて済む。
+case "${1:-}" in
+  supervisord) run_mode=web ;;
+  *)           run_mode=oneshot ;;
+esac
+
 # APP_KEY は必ず外から渡す。本番では生成しない (step07 の 5)。
 #
 # 未設定でもコンテナは起動でき、DB を読むだけの API は 200 を返してしまう。
@@ -42,35 +52,45 @@ esac
 # コンテナは起動し API も 200 を返す。壊れるのは返ってくる画像 URL だけで、
 # 監視からは正常に見えるのにブラウザでは全ページの画像が表示されない。
 #   例: https://cdn.ebook.furusawa.work
-if [ -z "${CDN_BASE_URL}" ]; then
+#
+# 画像URLを作るのは Web だけなので、oneshot (migrate など) では要求しない。
+if [ "${run_mode}" = "web" ] && [ -z "${CDN_BASE_URL}" ]; then
   echo "[entrypoint] CDN_BASE_URL が設定されていません。起動を中止します。" >&2
   echo "[entrypoint] 未設定だと画像URLが localhost になり、ブラウザから取得できません。" >&2
   echo "[entrypoint]   例: gcloud run deploy ... --set-env-vars=CDN_BASE_URL=https://cdn.ebook.furusawa.work" >&2
   exit 1
 fi
 
-# Cloud Run はリッスンすべきポートを $PORT で渡してくる (既定 8080)。
-# nginx は設定ファイル内で環境変数を展開できないのでここで埋める。
-# 置換対象を ${PORT} に限定しないと $uri などの nginx 変数まで消える。
-export PORT="${PORT:-8080}"
-envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+# ここから下は Web サーバとして起動するときだけの準備。
+# oneshot (Cloud Run Jobs からの artisan) には不要なので飛ばす。
+if [ "${run_mode}" = "web" ]; then
+  # Cloud Run はリッスンすべきポートを $PORT で渡してくる (既定 8080)。
+  # nginx は設定ファイル内で環境変数を展開できないのでここで埋める。
+  # 置換対象を ${PORT} に限定しないと $uri などの nginx 変数まで消える。
+  export PORT="${PORT:-8080}"
+  envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
-# nginx が使う一時ディレクトリ (テンプレートで /tmp 配下に寄せてある)
-mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi \
-         /tmp/nginx-uwsgi /tmp/nginx-scgi
+  # nginx が使う一時ディレクトリ (テンプレートで /tmp 配下に寄せてある)
+  mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi \
+           /tmp/nginx-uwsgi /tmp/nginx-scgi
 
-# 設定キャッシュはビルド時ではなく起動時に作る。
-# ビルド時に config:cache すると、そのときの環境変数が焼き付いてしまい、
-# Cloud Run が実行時に渡す DB_* や APP_KEY が反映されない。
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+  # 設定キャッシュはビルド時ではなく起動時に作る。
+  # ビルド時に config:cache すると、そのときの環境変数が焼き付いてしまい、
+  # Cloud Run が実行時に渡す DB_* や APP_KEY が反映されない。
+  php artisan config:cache
+  php artisan route:cache
+  php artisan view:cache
 
-# 上の artisan は root で走るので、php-fpm のワーカー (www-data) が
-# 後から書けるように所有者を戻す
-chown -R www-data:www-data storage bootstrap/cache
+  # 上の artisan は root で走るので、php-fpm のワーカー (www-data) が
+  # 後から書けるように所有者を戻す
+  chown -R www-data:www-data storage bootstrap/cache
+fi
 
-# マイグレーションはここでは流さない。インスタンスが同時に複数立つと競合するため、
-# Cloud Run Jobs か手動実行に分ける (step07 の 10)。
+# マイグレーションはここでは流さない。Cloud Run はインスタンスが同時に複数立ち、
+# 起動のたびに migrate すると競合するため (step07 の 10)。
+# 流すときは同じイメージを oneshot で使う:
+#   gcloud run jobs create ebook-migrate --image <IMAGE> \
+#     --command php --args artisan,migrate,--force
+#   gcloud run jobs execute ebook-migrate
 
 exec "$@"
