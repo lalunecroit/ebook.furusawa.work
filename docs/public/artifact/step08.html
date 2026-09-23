@@ -523,15 +523,6 @@ terraform apply
     <h2 data-sec="§04">Terraform 以外の積み残し</h2>
     <p class="lede">設計を読み直して見つかった、コード以外に必要なもの。</p>
 
-    <h3>docs の一覧生成が無い</h3>
-    <p>これは着手前に気づけて良かった部分。<code>docs/public/index.html</code> はサイドバーの一覧を <b>nginx の autoindex</b> から組み立てている。ローカルはこれで動くが、<b>GCS に autoindex は無い</b>。</p>
-
-<pre><span class="c">// index.json があればそれを使い、無ければ autoindex に落とす</span>
-const index = await loadIndex();
-return index?.[dir] ?? listDirByAutoindex(dir);</pre>
-
-    <p>フォールバックの実装は既に入っている。しかし Step.07 の適用順が前提にしている <code>tools/bin/generate-docs-index.php</code> は<b>まだ存在しない</b>（<code>tools/bin/</code> にあるのは <code>generate-sample-pages.php</code> だけ）。GCS へ流す前に書く必要がある。</p>
-
     <h3>マイグレーションと管理者ユーザ</h3>
     <p>コンテナ起動時には流さない（Step.07 の 10）。Cloud Run Jobs か手動で流す。</p>
 
@@ -557,7 +548,6 @@ gcloud run jobs execute ebook-migrate</pre>
       <table>
         <thead><tr><th>項目</th><th>選択肢</th><th>効いてくるところ</th></tr></thead>
         <tbody>
-          <tr><td>ドメイン</td><td><code>ebook.furusawa.work</code> の DNS を Cloud DNS へ移すか</td><td>レジストラ側の NS 変更が要る</td></tr>
           <tr><td>admin の保護</td><td><b>Cloud Armor は入れない方針</b></td><td>アプリ側の防御のみで守る（Step.07 の 15 / 16）</td></tr>
           <tr><td><code>min-instances</code></td><td>0 のままか</td><td>0 ならコールドスタート、1 以上なら常時課金</td></tr>
           <tr><td>イメージのタグ</td><td><code>v1</code> 固定か、コミットハッシュか</td><td>ロールバックのしやすさ</td></tr>
@@ -565,9 +555,32 @@ gcloud run jobs execute ebook-migrate</pre>
       </table>
     </div>
 
+    <h3>ドメインまわりで必要な作業</h3>
+    <p><code>furusawa.work</code> は Cloud DNS 上にあり、そのゾーンは今回のプロジェクトに属している。レジストラ（お名前.com）の NS も <code>ns-cloud-a1〜a4.googledomains.com</code> を向いているため、<b>レジストラで行う作業は無い</b>。ゾーン <code>furusawa-work</code> の中身は NS と SOA だけで、<code>ebook.furusawa.work</code> は未設定。</p>
+
+    <p>このステップで行うのは <b><code>ebook.</code> 配下の A レコードを既存ゾーンに追加すること</b>だけ。専用ゾーンは作らない。親ゾーンが空なので隔離の利点が無く、委任を挟まない分だけ証明書の発行も速い。</p>
+
+<pre><span class="c">// 手で作られた既存ゾーンを、作らずに参照する（import は不要）</span>
+data "google_dns_managed_zone" "root" {
+  name = "furusawa-work"
+}
+
+resource "google_dns_record_set" "api" {
+  managed_zone = data.google_dns_managed_zone.root.name
+  name         = "api.ebook.${data.google_dns_managed_zone.root.dns_name}"
+  type         = "A"
+  ttl          = 300
+  rrdatas      = [google_compute_global_address.lb.address]
+}</pre>
+
+    <div class="note">
+      <span class="note__label">効いてくるところ</span>
+      <p>親ゾーンが Terraform の管理外であることは安全側に働く。<code>terraform destroy</code> してもゾーン自体は残り、ドメインが死なない。実施のタイミングは LB 一式と同じ段。A レコードの中身が LB の静的 IP なので、<b>IP を確保するまで書けない</b>。</p>
+    </div>
+
     <div class="note">
       <span class="note__label">次の一手</span>
-      <p><code>infra/bootstrap/</code> から書く。中身は GCS バケット 1 つと <code>google_project_service</code> だけなので小さい。ここで <code>terraform validate</code> と <code>plan</code> の読み方を通しておくと、本体の apply が楽になる。</p>
+      <p><code>infra/environments/prod/</code> を書く。Artifact Registry だけを先に作って <code>-target</code> で止め、イメージを push してから残りを流す。</p>
     </div>
   </section>
 

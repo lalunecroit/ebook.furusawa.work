@@ -107,24 +107,7 @@ terraform apply
 
 設計を読み直して見つかった、**コード以外の積み残し**です。
 
-### 4.1 `docs` の一覧生成（`index.json`）
-
-`docs/public/index.html` はサイドバーの一覧を **nginx の autoindex** から組み立てています。
-ローカルはこれで動きますが、**GCS に autoindex はありません**。
-
-そのためのフォールバックとして `index.json` を読む実装が既に入っています。
-
-```js
-// index.json があればそれを使い、無ければ autoindex に落とす
-const index = await loadIndex();
-return index?.[dir] ?? listDirByAutoindex(dir);
-```
-
-Step.07 の適用順には `tools/bin/generate-docs-index.php` を流す前提で書かれていますが、
-**このファイルはまだありません**（`tools/bin/` にあるのは `generate-sample-pages.php` だけ）。
-GCS へ流す前に書く必要があります。
-
-### 4.2 マイグレーションの実行
+### 4.1 マイグレーションの実行
 
 コンテナ起動時には流しません（Step.07 の 10）。Cloud Run Jobs を作るか、手で流します。
 
@@ -134,11 +117,11 @@ gcloud run jobs create ebook-migrate --image <IMAGE> \
 gcloud run jobs execute ebook-migrate
 ```
 
-### 4.3 管理者ユーザの作成
+### 4.2 管理者ユーザの作成
 
-`artisan admin:user` を本番 DB に対して実行する必要があります。4.2 と同じ経路で流せます。
+`artisan admin:user` を本番 DB に対して実行する必要があります。4.1 と同じ経路で流せます。
 
-### 4.4 Secret Manager への値の投入
+### 4.3 Secret Manager への値の投入
 
 `APP_KEY` と DB パスワードを入れます。**値を Terraform で作ると平文が tfstate に残る**ので、
 シークレットの「箱」だけ Terraform で管理し、値は `gcloud secrets versions add` で手投入する方が安全です。
@@ -147,20 +130,67 @@ gcloud run jobs execute ebook-migrate
 
 ## 5. 決めていないこと
 
-着手前に決めておく必要がある項目です。
+着手前に決めておく必要がある項目です。決まったものは節を分けて残します。
 
 | | 選択肢 | メモ |
 |---|---|---|
-| ドメイン | `ebook.furusawa.work` の DNS を Cloud DNS へ移すか | レジストラ側の NS 変更が要る |
 | admin の保護 | Cloud Armor の IP 制限を入れるか | **入れない方針**。アプリ側の防御のみ（Step.07 の 15 / 16） |
 | `min-instances` | 0 のままか | 0 ならコールドスタート、1 以上なら常時課金 |
 | イメージのタグ | `v1` 固定か、コミットハッシュか | ロールバックのしやすさに効く |
+
+### 5.1 ドメインまわりで必要な作業
+
+`furusawa.work` は Cloud DNS 上にあり、そのゾーンは今回のプロジェクトに属しています。
+レジストラ側の NS も Google を向いているため、**レジストラで行う作業はありません。**
+
+```
+レジストラ       お名前.com（GMO）。有効期限 2027-02-15
+NS               ns-cloud-a1〜a4.googledomains.com
+Cloud DNS ゾーン  furusawa-work (furusawa.work.)   … my-project-book-509215 内
+ゾーン内レコード   NS と SOA のみ
+ebook.furusawa.work   A / NS とも未設定
+```
+
+このステップで行うのは、**`ebook.` 配下の A レコードを既存ゾーンに追加すること**だけです。
+`ebook.furusawa.work` の専用ゾーンは作りません。
+
+| | 採用：既存ゾーンに追加 | 不採用：専用ゾーン + 委任 |
+|---|---|---|
+| ゾーン数 | 1（既存のまま） | 2 |
+| 費用 | 追加 0 円 | +約 30 円/月 |
+| 委任（NS レコード） | 不要 | 親ゾーンに NS を足す |
+| 名前解決の段数 | 1 段 | 2 段（伝播待ちが増える） |
+| 証明書発行 | 速い | 委任の伝播分だけ遅く、失敗要因が 1 つ増える |
+
+親ゾーンに他のサービスが同居していれば隔離性に意味がありますが、**中身が NS と SOA だけ**なので利点がありません。
+
+Terraform 側は、**手で作られた既存ゾーンを作らずに参照**します（import は不要）。
+
+```hcl
+data "google_dns_managed_zone" "root" {
+  name = "furusawa-work"
+}
+
+resource "google_dns_record_set" "api" {
+  managed_zone = data.google_dns_managed_zone.root.name
+  name         = "api.ebook.${data.google_dns_managed_zone.root.dns_name}"  # api.ebook.furusawa.work.
+  type         = "A"
+  ttl          = 300
+  rrdatas      = [google_compute_global_address.lb.address]
+}
+```
+
+**親ゾーンが Terraform の管理外であることは、むしろ安全側に働きます。** `terraform destroy` してもゾーン自体は残り、ドメインが死にません。
+
+**実施のタイミング。** A レコードの中身は LB のグローバル静的 IP なので、**IP を確保するまで書けません**。
+この作業は LB 一式を作る段でまとめて行い、レコードが揃ってから証明書が `ACTIVE` になるのを待ちます。
 
 ---
 
 ## 現時点の未確認事項
 
 - Terraform のコードはまだ 1 行も書いていません。Step.07 の骨子は `terraform validate` を通していません
+- Step.07 の 3 章は DNS ゾーンを `google_dns_managed_zone` で新規作成する前提ですが、5.1 の通り**既存ゾーンを `data` で参照する**形に変わります
 - backend bucket の index.html 解決（Step.07 の 8 章）は実機確認が必要です
 - backend bucket に IAP を付けられるかは未確認です
 - コストは Step.07 の 7 章の試算のみで、実測していません
