@@ -680,7 +680,7 @@ terraform output name_servers
 インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
 
 <!--
-  1〜13 は対応済みのため表から削除した。
+  1〜14 は対応済みのため表から削除した。
   1〜3 の実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
   4 の実装: .env.example と config/database.php のコメント。
   5 の実装: docker/prod/entrypoint.sh の APP_KEY チェック。
@@ -692,6 +692,7 @@ terraform output name_servers
   11 の実装: Api/HealthController と routes/api.php、tests/Feature/Api/HealthTest.php。
   12 の実装: frontend/public/js/config.js。
   13 の実装: .env / .env.example / compose.yaml の SESSION_DRIVER。
+  14 の実装: config/filesystems.php と AppServiceProvider::registerGcsDriver()。
 
   | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
   | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
@@ -706,6 +707,7 @@ terraform output name_servers
   | 11 | `/api/health` の追加 | 監視と疎通確認用 |
   | 12 | フロントの `CONFIG.api.base` を `https://api.ebook.furusawa.work/api` に | Step.02 で `reader.js` に書いた API のベース URL |
   | 13 | **`SESSION_DRIVER=database`** | Step.02.5 で file にしたセッションは Cloud Run では保たない。下記参照 |
+  | 14 | **`cdn` ディスクを GCS に差し替える** | Step.06 の画像アップロード先。ローカルディスクは Cloud Run に無い |
 
   4 について: 実機で確認したところ、DB_SOCKET が空でなければ Laravel は
   host/port を見ずにソケットで接続するため、表にあった「TCP 用の DB_HOST は
@@ -797,13 +799,26 @@ terraform output name_servers
   なお sessions テーブルは Laravel 同梱のマイグレーションで作られるので、
   表のとおり追加のコードは不要だった。
 
+  14 について: 本文に載せたとおり disk の定義だけの差し替えで済み、
+  Storage::disk('cdn') を呼ぶコントローラは 1 行も変えていない。
+  ただし本文に書いていない前提が2つあった。
+  (a) Laravel が同梱するドライバは local / s3 / ftp / sftp だけで gcs は無い。
+      league/flysystem-google-cloud-storage を入れたうえで Storage::extend で
+      自分で繋ぐ必要がある (AppServiceProvider::registerGcsDriver)。
+  (b) バケットは均一なバケットレベルのアクセス (allUsers:objectViewer を
+      バケットに付ける = インフラ表の 8) を前提にしているので、オブジェクト単位の
+      ACL が使えない。visibility => 'public' をそのまま渡すと書き込み時に 400 に
+      なるため、UniformBucketLevelAccessVisibility を渡して無効化している。
+  検証は fake-gcs-server に向けて実施し、put / exists / get / size / delete と、
+  管理画面が実際に使う putFileAs が動くことを確認した。
+  CDN_DISK 未設定なら従来どおり local のままであることも確認済み。
+
   残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
   番号で参照しているため、振り直すと対応が取れなくなる。
 -->
 
 | # | 変更 | 理由 |
 |---|---|---|
-| 14 | **`cdn` ディスクを GCS に差し替える** | Step.06 の画像アップロード先。ローカルディスクは Cloud Run に無い |
 | 15 | `SESSION_SECURE_COOKIE=true` / `SESSION_DOMAIN=admin.ebook.furusawa.work` | Cookie を HTTPS と `admin.` に閉じる |
 | 16 | `app.admin_host` の追加と `Route::domain()` | `api.` から `/admin/*` に届かせない（4.8） |
 | 17 | アップロードの上限を 32MiB 未満に揃える | Cloud Run のリクエストサイズ上限。超えると Laravel まで届かず LB が 413 を返す |
