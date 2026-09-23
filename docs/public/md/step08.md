@@ -102,7 +102,7 @@ docker push asia-northeast1-docker.pkg.dev/my-project-book-509215/app/api:v1
 cd infra/environments/prod
 terraform apply
 
-# ⑤ 静的ファイルを流し込む（リポジトリルートから）
+# ⑤ 静的ファイルを流し込む（3.4）
 # ⑥ ネームサーバをレジストラ側に設定（5.1 の通り不要）
 ```
 
@@ -194,7 +194,7 @@ docker compose exec backend php artisan key:generate --show | \
 gcloud secrets versions list ebook-app-key
 ```
 
-> **4 を飛ばすと C 段で止まります。** `APP_KEY` は箱（Secret）だけ Terraform が作り、
+> **`APP_KEY` の投入を飛ばすと C 段で止まります。** `APP_KEY` は箱（Secret）だけ Terraform が作り、
 > 値は手で入れる約束になっています（5.4）。空のまま Cloud Run を作ると、
 > Step.07 で入れた起動時ガード（`docker/prod/entrypoint.sh`）が
 > **`APP_KEY` 未設定を検知してコンテナを起動させません**。
@@ -210,7 +210,7 @@ gcloud secrets versions list ebook-app-key
 | Cloud SQL | `gcloud sql instances list` | `ebook-db` が `RUNNABLE` |
 | DB とユーザ | 4.1 の phpMyAdmin で接続 | `ebooks` が見え、テーブルは 0 件 |
 | DB パスワード | `gcloud secrets versions list ebook-db-password` | 1 件 |
-| **`APP_KEY`** | `gcloud secrets versions list ebook-app-key` | **1 件**（0 件なら 4 を実行） |
+| **`APP_KEY`** | `gcloud secrets versions list ebook-app-key` | **1 件**（0 件なら上の投入を実行） |
 | Terraform | `terraform plan` | `No changes.` |
 
 #### B 段で踏んだエラー：`Invalid Tier (db-f1-micro) for (ENTERPRISE_PLUS) Edition`
@@ -255,6 +255,71 @@ settings {
 > 作成済みとして state に入り、Cloud SQL だけが未作成です。修正後の plan は
 > `3 to add` になり、**作成済みのものは作り直されません**。
 > これが「state がある」ことの効き目です。
+
+---
+
+### 3.4 C 段のあとにやること
+
+Cloud Run は立ちましたが、この時点では **DB にテーブルが無く、バケットも空**です。
+D 段に進むと証明書待ちで 15〜60 分止まるので、その前に中身を揃えます。
+
+**マイグレーション**（Job の定義は Terraform 側 / 4.2）
+
+```bash
+gcloud run jobs execute ebook-migrate --region asia-northeast1 --wait
+```
+
+**管理者ユーザ**（Job にできないのでプロキシ経由 / 4.3）
+
+```bash
+docker compose --profile prod-db up -d cloudsql-proxy
+
+docker compose exec \
+  -e DB_HOST=cloudsql-proxy -e DB_PORT=3306 \
+  -e DB_DATABASE=ebooks -e DB_USERNAME=ebooks \
+  -e DB_PASSWORD="$(gcloud secrets versions access latest --secret=ebook-db-password)" \
+  backend php artisan admin:user admin@example.com --name=管理者
+```
+
+**静的ファイル**（リポジトリルートから）
+
+```bash
+docker compose run --rm tools php tools/bin/generate-docs-index.php
+
+gcloud storage rsync -r frontend/public/ gs://my-project-book-509215-frontend/ \
+  --cache-control="public, max-age=300"
+
+gcloud storage rsync -r cdn/public/ gs://my-project-book-509215-cdn/ \
+  --cache-control="public, max-age=31536000, immutable"
+
+gcloud storage rsync -r docs/public/ gs://my-project-book-509215-docs/ \
+  --cache-control="public, max-age=300"
+
+# .md は既定で text/markdown になり、「ソース」リンクがダウンロードになる。
+# rsync は同期済みのファイルをスキップするので、--content-type を後から付けても
+# 効かない。アップロード後に objects update で上書きする
+gcloud storage objects update "gs://my-project-book-509215-docs/md/*.md" \
+  --content-type=text/plain
+```
+
+バケット名は `terraform output buckets` で確認できます。
+`<プロジェクトID>-<用途>` で組み立てているのは、**バケット名がグローバルに一意**だからです。
+
+`rsync` は既定で削除を行いません。消えたファイルをバケットからも消したい場合だけ
+`--delete-unmatched-destination-objects` を付けます。
+
+#### C 段の完了条件
+
+| | 確認方法 | 期待 |
+|---|---|---|
+| Cloud Run | `gcloud run services list --region asia-northeast1` | `ebook-api` / `ebook-admin` が Ready |
+| マイグレーション | 4.1 の phpMyAdmin | `books` / `book_pages` / `users` / `sessions` がある |
+| 管理者ユーザ | 同上 | `users` に 1 件 |
+| 静的ファイル | `gcloud storage ls gs://my-project-book-509215-frontend/` | `index.html` などがある |
+| docs の一覧 | `gcloud storage ls gs://my-project-book-509215-docs/index.json` | 存在する |
+
+この時点では **LB がまだ無いので、ブラウザからは何も見えません**。
+`*.run.app` も `ingress` で塞いであるため直接は叩けません。確認は上の表の手段で行います。
 
 ---
 
@@ -317,17 +382,58 @@ DB_HOST=127.0.0.1 DB_PORT=3307 php artisan migrate --force
 
 ### 4.2 マイグレーションの実行
 
-コンテナ起動時には流しません（Step.07 の 10）。Cloud Run Jobs を作るか、手で流します。
+コンテナ起動時には流しません（Step.07 の 10）。Cloud Run はインスタンスが同時に複数立つので、
+起動のたびに `migrate` すると競合します。同じイメージを **Cloud Run Jobs** として別に起動します。
+
+Job の定義は `modules/job` に置き、Terraform で管理します。何度も実行するものなので、
+`gcloud` で作ると引数や環境変数が手元の履歴にしか残りません。
+
+```hcl
+module "migrate_job" {
+  source = "../../modules/job"
+
+  name  = "ebook-migrate"
+  image = "${module.registry.url}/api:v1"   # サービスと同じイメージ
+  args  = ["artisan", "migrate", "--force"]
+
+  cloudsql_connection_name = module.database.connection_name
+  secret_env               = local.common_secret_env
+}
+```
+
+`entrypoint.sh` は第 1 引数が `supervisord` 以外なら **oneshot モード**で動き、
+nginx の設定生成や `config:cache` を飛ばします。そのため Web 用の環境変数
+（`CDN_BASE_URL` など）は渡しません。`APP_KEY` だけは起動時に必ず要求されます。
+
+**作っただけでは何も起きません。** 実行は明示的に叩いたときだけです。
 
 ```bash
-gcloud run jobs create ebook-migrate --image <IMAGE> \
-  --command php --args artisan,migrate,--force
-gcloud run jobs execute ebook-migrate
+gcloud run jobs execute ebook-migrate --region asia-northeast1 --wait
 ```
+
+`max_retries = 0` にしてあります。マイグレーションは途中まで流れている可能性があるため、
+自動で二度流さず人が確認します。
 
 ### 4.3 管理者ユーザの作成
 
-`artisan admin:user` を本番 DB に対して実行する必要があります。4.2 と同じ経路で流せます。
+**このコマンドは Job にできません。** `artisan admin:user` は
+`Laravel\Prompts\password()` でパスワードを対話的に聞く作りで（履歴に残さないため / Step.06）、
+TTY の無い Cloud Run Jobs では動きません。
+
+4.1 のプロキシ経由で、手元から本番 DB に向けて流します。
+
+```bash
+docker compose --profile prod-db up -d cloudsql-proxy
+
+docker compose exec \
+  -e DB_HOST=cloudsql-proxy -e DB_PORT=3306 \
+  -e DB_DATABASE=ebooks -e DB_USERNAME=ebooks \
+  -e DB_PASSWORD="$(gcloud secrets versions access latest --secret=ebook-db-password)" \
+  backend php artisan admin:user admin@example.com --name=管理者
+```
+
+`backend` と `cloudsql-proxy` は同じ compose ネットワークにいるので、サービス名で解決できます。
+パスワードはコマンド置換で渡すため、**シェルの履歴には `$(gcloud ...)` の形しか残りません**。
 
 ### 4.4 Secret Manager への値の投入
 
