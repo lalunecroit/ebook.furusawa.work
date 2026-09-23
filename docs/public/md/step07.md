@@ -677,10 +677,12 @@ terraform output name_servers
 
 ## 6. アプリ側に必要な変更
 
-インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
+インフラだけ作っても `backend/` はそのままでは本番で動きませんでした。
+ここに挙げていた **17 項目はすべて対応済み**です。各項目の内容と、実装時に当初の
+想定から変えた点は下のコメントに残してあります。
 
 <!--
-  1〜16 は対応済みのため表から削除した。
+  1〜17 (全項目) を対応済みのため表から削除した。
   1〜3 の実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
   4 の実装: .env.example と config/database.php のコメント。
   5 の実装: docker/prod/entrypoint.sh の APP_KEY チェック。
@@ -695,6 +697,7 @@ terraform output name_servers
   14 の実装: config/filesystems.php と AppServiceProvider::registerGcsDriver()。
   15 の実装: config/session.php の secure 既定値と .env.example。
   16 の実装: config/app.php の admin_host と bootstrap/app.php の Route::domain。
+  17 の実装: php.d/zz-app.ini、docker/prod/php.ini、両方の nginx 設定。
 
   | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
   | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
@@ -712,6 +715,7 @@ terraform output name_servers
   | 14 | **`cdn` ディスクを GCS に差し替える** | Step.06 の画像アップロード先。ローカルディスクは Cloud Run に無い |
   | 15 | `SESSION_SECURE_COOKIE=true` / `SESSION_DOMAIN=admin.ebook.furusawa.work` | Cookie を HTTPS と `admin.` に閉じる |
   | 16 | `app.admin_host` の追加と `Route::domain()` | `api.` から `/admin/*` に届かせない（4.8） |
+  | 17 | アップロードの上限を 32MiB 未満に揃える | Cloud Run のリクエストサイズ上限。超えると Laravel まで届かず LB が 413 を返す |
 
   4 について: 実機で確認したところ、DB_SOCKET が空でなければ Laravel は
   host/port を見ずにソケットで接続するため、表にあった「TCP 用の DB_HOST は
@@ -845,13 +849,26 @@ terraform output name_servers
       どのホストでも /admin/login 200 (開発と同じ)
   公開 API にはホスト制限をかけていない。www. から叩かれるため。
 
-  残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
+  17 について: 上限は Laravel / PHP / nginx / Cloud Run の4層にあり、外側ほど
+  大きくないと内側まで届かない。外側で先に落ちると、アプリが用意した日本語の
+  エラーではなく PHP や nginx の汎用エラーが出る。
+    Laravel のバリデーション  8MB   BookPageUploadRequest::MAX_KB (利用者に見える上限)
+    upload_max_filesize      10M
+    post_max_size            12M   ファイル本体 + フォーム項目 + マルチパート境界
+    client_max_body_size     16m
+    Cloud Run の上限         32MiB 変更不可。上のすべてが下回っていること
+  開発の PHP が 2M / 8M のままで、アプリが許すはずの 5.61MB が
+  「画像 failed to upload.」で弾かれていた (本番だけ 30M にしていたため
+  ローカルで再現しない状態だった)。php.d/zz-app.ini を追加して揃えた。
+  開発・本番の両方で実測:
+    5MB  -> 201 成功
+    9MB  -> 302 「画像は 8MB 以内にしてください。」
+    20MB -> 413 (nginx が受け取り拒否)
+
+  番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
   番号で参照しているため、振り直すと対応が取れなくなる。
 -->
 
-| # | 変更 | 理由 |
-|---|---|---|
-| 17 | アップロードの上限を 32MiB 未満に揃える | Cloud Run のリクエストサイズ上限。超えると Laravel まで届かず LB が 413 を返す |
 
 ### 管理画面（`admin.`）で追加になること
 

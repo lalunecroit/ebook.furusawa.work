@@ -37,9 +37,10 @@ http {
     server_tokens   off;
     charset         utf-8;
 
-    # Cloud Run のリクエストサイズ上限は 32MiB。超えると Laravel まで届かず
-    # LB が 413 を返すので、内側に寄せておく (詳細は step07 の 17)
-    client_max_body_size 30m;
+    # アップロードの上限。内側 (php.ini の post_max_size) より上に取る。
+    # Cloud Run の上限 32MiB を超えると Laravel まで届かず LB が 413 を返すので、
+    # そこも下回らせる。段の全体は docker/prod/php.ini のコメントを参照
+    client_max_body_size 16m;
 
     # 書き込み先を /tmp に寄せる (実行ユーザを絞っても動くように)
     client_body_temp_path /tmp/nginx-client-body;

@@ -23,6 +23,9 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 # clear_env = no など、このアプリ向けの php-fpm 設定
 COPY php-fpm.d/zz-app.conf /usr/local/etc/php-fpm.d/zz-app.conf
 
+# アップロード上限など、このアプリ向けの php 設定
+COPY php.d/zz-app.ini /usr/local/etc/php/conf.d/zz-app.ini
+
 WORKDIR /app
 
 # bind mount で上書きされるが、単体でも動くようにソースを入れておく
