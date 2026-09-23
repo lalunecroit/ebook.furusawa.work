@@ -18,7 +18,18 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
-    access_log  /dev/stdout;
+    # LB のヘルスチェックは数秒おきに来るので、アクセスログからは外す
+    # (Cloud Logging の量とコストに効く。エラーログには出る)。
+    #
+    # location 側に access_log off を書いても効かない。try_files で /index.php へ
+    # 内部リダイレクトされ、ログは最終的に処理した location ~ \.php$ の設定で出るため。
+    # $request_uri はクエリ込みなので ?deep=1 付きも同じく除外される。
+    map $request_uri $loggable {
+        ~^/api/health  0;
+        default        1;
+    }
+
+    access_log  /dev/stdout  combined  if=$loggable;
 
     sendfile        on;
     tcp_nopush      on;

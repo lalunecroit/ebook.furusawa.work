@@ -680,7 +680,7 @@ terraform output name_servers
 インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
 
 <!--
-  1〜10 は対応済みのため表から削除した。
+  1〜11 は対応済みのため表から削除した。
   1〜3 の実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
   4 の実装: .env.example と config/database.php のコメント。
   5 の実装: docker/prod/entrypoint.sh の APP_KEY チェック。
@@ -689,6 +689,7 @@ terraform output name_servers
   8 の実装: compose.yaml と .env.example のコメント。
   9 の実装: bootstrap/app.php の trustProxies と tests/Feature/TrustProxiesTest.php。
   10 の実装: docker/prod/entrypoint.sh の実行モード分岐。
+  11 の実装: Api/HealthController と routes/api.php、tests/Feature/Api/HealthTest.php。
 
   | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
   | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
@@ -700,6 +701,7 @@ terraform output name_servers
   | 8 | `APP_URL=https://api.ebook.furusawa.work` | 生成される絶対 URL の基点 |
   | 9 | **`TrustProxies` を有効にする** | LB 配下では `X-Forwarded-Proto` を信頼しないと `url()` が `http://` を吐く |
   | 10 | マイグレーションをコンテナ起動時に走らせない | インスタンスが同時に複数立つと競合する。Cloud Run Jobs か手動実行に分離 |
+  | 11 | `/api/health` の追加 | 監視と疎通確認用 |
 
   4 について: 実機で確認したところ、DB_SOCKET が空でなければ Laravel は
   host/port を見ずにソケットで接続するため、表にあった「TCP 用の DB_HOST は
@@ -759,13 +761,21 @@ terraform output name_servers
       --command php --args artisan,migrate,--force
     gcloud run jobs execute ebook-migrate
 
+  11 について: 既定は DB に触らない浅い確認にした。LB のヘルスチェックが見るのは
+  こちらで、DB まで見て 503 を返す作りにすると DB が一瞬詰まっただけで全
+  インスタンスが不健全と判定されて同時に作り直され、障害が広がるため。
+  DB まで確かめたいときは ?deep=1 を付ける (失敗時 503、監視や手動確認用)。
+  組み込みの /up は HTML を返すので、機械で読む用に JSON のものを別に持つ。
+  本番 nginx では health をアクセスログから外している。location に
+  access_log off を書いても効かず (try_files で /index.php へ内部リダイレクト
+  されるため)、map による条件付き access_log にしている。
+
   残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
   番号で参照しているため、振り直すと対応が取れなくなる。
 -->
 
 | # | 変更 | 理由 |
 |---|---|---|
-| 11 | `/api/health` の追加 | 監視と疎通確認用 |
 | 12 | フロントの `CONFIG.api.base` を `https://api.ebook.furusawa.work/api` に | Step.02 で `reader.js` に書いた API のベース URL |
 | 13 | **`SESSION_DRIVER=database`** | Step.02.5 で file にしたセッションは Cloud Run では保たない。下記参照 |
 | 14 | **`cdn` ディスクを GCS に差し替える** | Step.06 の画像アップロード先。ローカルディスクは Cloud Run に無い |
