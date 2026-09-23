@@ -45,6 +45,9 @@ services:
     environment:
       # 画像URLの組み立てに使うベースURL。ブラウザから見えるホスト名で渡す
       CDN_BASE_URL: "http://localhost:8082"
+      # API を fetch してよいオリジン。開発では frontend サービス (8080)。
+      # 本番は www. と apex を渡す (step07 の 7)
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080"
       # 書き込み先 (filesystems.php の cdn ディスク)
       CDN_ROOT: /var/www/cdn
       APP_ENV: local

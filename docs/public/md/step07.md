@@ -680,11 +680,12 @@ terraform output name_servers
 インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
 
 <!--
-  1〜6 は対応済みのため表から削除した。
+  1〜7 は対応済みのため表から削除した。
   1〜3 の実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
   4 の実装: .env.example と config/database.php のコメント。
   5 の実装: docker/prod/entrypoint.sh の APP_KEY チェック。
   6 の実装: docker/prod/entrypoint.sh の CDN_BASE_URL チェック。
+  7 の実装: config/cors.php と tests/Feature/Api/CorsTest.php。
 
   | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
   | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
@@ -692,6 +693,7 @@ terraform output name_servers
   | 4 | `DB_SOCKET` 対応の確認 | Laravel の `config/database.php` は `unix_socket` を既定で見る。TCP 用の `DB_HOST` は空にする |
   | 5 | `APP_KEY` を Secret Manager から | 起動のたびに生成すると暗号化済みデータが読めなくなる |
   | 6 | `CDN_BASE_URL=https://cdn.ebook.furusawa.work` | 画像の配り元。ホストが変わるだけで、組み立てロジックは Step.02 のまま |
+  | 7 | **CORS をオリジン指定で明示する** | `www.` から `api.` への `fetch` はクロスオリジン。下記参照 |
 
   4 について: 実機で確認したところ、DB_SOCKET が空でなければ Laravel は
   host/port を見ずにソケットで接続するため、表にあった「TCP 用の DB_HOST は
@@ -711,13 +713,20 @@ terraform output name_servers
   コンテナは起動し API も 200 を返し、画像 URL だけが localhost になって
   ブラウザから取得できない状態になる。監視では気づけないため entrypoint で止めている。
 
+  7 について: config/cors.php を新規に置き、allowed_origins を
+  CORS_ALLOWED_ORIGINS (カンマ区切り) から読むようにした。paths は api/* だけで、
+  管理画面は同一オリジンなので対象外。公開 API は参照のみなので
+  allowed_methods は GET/HEAD/OPTIONS に絞ってある。
+  なお php-cors は許可オリジンが1つだけだと、リクエスト元に関係なくその固定値を
+  返す (CorsService::isSingleOriginAllowed)。値が一致しなければブラウザが弾くので
+  安全だが、「許可外ならヘッダが無い」と思い込むと読み違えるのでテストに残した。
+
   残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
   番号で参照しているため、振り直すと対応が取れなくなる。
 -->
 
 | # | 変更 | 理由 |
 |---|---|---|
-| 7 | **CORS をオリジン指定で明示する** | `www.` から `api.` への `fetch` はクロスオリジン。下記参照 |
 | 8 | `APP_URL=https://api.ebook.furusawa.work` | 生成される絶対 URL の基点 |
 | 9 | **`TrustProxies` を有効にする** | LB 配下では `X-Forwarded-Proto` を信頼しないと `url()` が `http://` を吐く |
 | 10 | マイグレーションをコンテナ起動時に走らせない | インスタンスが同時に複数立つと競合する。Cloud Run Jobs か手動実行に分離 |
