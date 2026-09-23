@@ -136,25 +136,34 @@ CI を入れる段階で決めれば足ります。それまで手で push す�
 | 段 | モジュール | 作るもの | 月額 | 所要 |
 |---|---|---|---|---|
 | **B** | `database` | Cloud SQL / DB / ユーザ / Secret ×2 | 約 1,800 円 | 10〜15 分 |
-| **C** | `api_service` ×2 | Cloud Run（api / admin）+ SA + IAM | min=1 のぶん課金 | 数分 |
-| **D** | `static_site` ×3 + `frontdoor` | GCS 3 本 + LB + 証明書 + DNS | 約 2,900 円 | **15〜60 分** |
+| **C** | `static_site` ×3 + `api_service` ×2 | GCS 3 本 + Cloud Run（api / admin）+ SA + IAM | min=1 のぶん課金 | 数分 |
+| **D** | `frontdoor` | LB + 証明書 + DNS レコード | 約 2,900 円 | **15〜60 分** |
 
 D の所要時間はマネージド証明書のプロビジョニング待ちです。
 **DNS レコードが全部揃ってからでないと `ACTIVE` になりません**（Step.07 の 8 章）。
 ここだけ独立させておくと、待っている間に他を触らずに済みます。
 
-段ごとに `-target` で区切ります。
+**GCS バケットが C にあるのは、`admin` がそれに依存するからです。** `cdn` バケットへの
+`storage.objectAdmin` を `api_service` モジュールの中で付けているため、
+バケットが無いと `module.admin` を作れません。
+
+区切りの基準は「モジュールの種類」ではなく**課金が始まる地点と待ち時間が出る地点**です。
+バケットは数十円・数秒なので、D の課金ゲート（LB の約 2,880 円）は動きません。
+**C = アプリが動く状態が揃う / D = インターネットに公開する**、という線引きになります。
+
+**区切りは `-target` ではなく、コードを書く順番で作ります。** その段のモジュールを
+書いた時点で apply すれば、`*.tf` にまだ無いものは作られません。毎回素の
+`terraform apply` で足ります。
 
 ```bash
 cd infra/environments/prod
-terraform apply -target=module.database   # B
-terraform apply -target=module.api -target=module.admin   # C
-terraform apply                                            # D（残り全部）
+terraform apply     # B（database を書いた時点）
+terraform apply     # C（static_site と api_service を書き足した時点）
+terraform apply     # D（frontdoor を書き足した時点）
 ```
 
-> `-target` は本来デバッグ用の機能で、常用するものではありません。
-> ここでは**課金の開始地点を自分で選ぶ**ために使っています。
-> 全部書き終えたあとの通常運用では、素の `terraform apply` だけを使います。
+`-target` は使いません。本来デバッグ用の機能で、**指定したリソース以外の出力値が
+state に書かれない**という副作用があります。
 
 ---
 
@@ -168,29 +177,24 @@ terraform plan
 #   → Plan: 7 to add, 0 to change, 0 to destroy.
 
 # 2. 作る（Cloud SQL の作成に 10〜15 分かかる）
-terraform apply -target=module.database
-
-# 3. -target を外して流し直す
-#    -target を使うと出力値が state に書かれないまま残る。
-#    実リソースは変わらず、output だけが保存される
 terraform apply
 
-# 4. 出力を確認
+# 3. 出力を確認
 terraform output
 #   db_connection_name    = "my-project-book-509215:asia-northeast1:ebook-db"
 #   db_password_secret_id = "ebook-db-password"
 #   app_key_secret_id     = "ebook-app-key"
 
-# 5. APP_KEY を投入する（箱だけ作ってあるので値を入れる / 5.4）
+# 4. APP_KEY を投入する（箱だけ作ってあるので値を入れる / 5.4）
 cd ../../..
 docker compose exec backend php artisan key:generate --show | \
   gcloud secrets versions add ebook-app-key --data-file=-
 
-# 6. 入ったか確認（1 件あれば OK）
+# 5. 入ったか確認（1 件あれば OK）
 gcloud secrets versions list ebook-app-key
 ```
 
-> **5 を飛ばすと C 段で止まります。** `APP_KEY` は箱（Secret）だけ Terraform が作り、
+> **4 を飛ばすと C 段で止まります。** `APP_KEY` は箱（Secret）だけ Terraform が作り、
 > 値は手で入れる約束になっています（5.4）。空のまま Cloud Run を作ると、
 > Step.07 で入れた起動時ガード（`docker/prod/entrypoint.sh`）が
 > **`APP_KEY` 未設定を検知してコンテナを起動させません**。
@@ -206,7 +210,7 @@ gcloud secrets versions list ebook-app-key
 | Cloud SQL | `gcloud sql instances list` | `ebook-db` が `RUNNABLE` |
 | DB とユーザ | 4.1 の phpMyAdmin で接続 | `ebooks` が見え、テーブルは 0 件 |
 | DB パスワード | `gcloud secrets versions list ebook-db-password` | 1 件 |
-| **`APP_KEY`** | `gcloud secrets versions list ebook-app-key` | **1 件**（0 件なら 5 を実行） |
+| **`APP_KEY`** | `gcloud secrets versions list ebook-app-key` | **1 件**（0 件なら 4 を実行） |
 | Terraform | `terraform plan` | `No changes.` |
 
 #### B 段で踏んだエラー：`Invalid Tier (db-f1-micro) for (ENTERPRISE_PLUS) Edition`
