@@ -47,3 +47,8 @@ output "cloud_run" {
     }
   }
 }
+
+output "migrate_job" {
+  description = "マイグレーション用の Cloud Run Job。作成しただけでは実行されない"
+  value       = module.migrate_job.name
+}

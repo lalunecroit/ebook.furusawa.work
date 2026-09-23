@@ -1,8 +1,8 @@
 # 本番環境。modules/ の部品を組み合わせる。
 #
-# Cloud Run はイメージが無いと作れないので、まず registry だけを
-#   terraform apply -target=module.registry
-# で作り、docker push を済ませてから残りを流す。
+# 段階的に書き足して、その都度 terraform apply する。
+# Cloud Run はイメージが無いと作れないので、registry を先に作って
+# docker push を済ませてから api / admin を書き足した。
 
 locals {
   # ホスト名。DNS レコードも証明書もこれを元にする
@@ -158,4 +158,35 @@ module "admin" {
 
   # 画像を書けるのはこちらだけ
   cdn_bucket_writer = module.cdn.bucket_name
+}
+
+# --------------------------------------------------------------- 単発実行
+# マイグレーションはコンテナ起動時には流さず、Job として別に実行する
+# (step07 の 10)。作るだけでは何も起きず、実行は明示的に叩いたときだけ:
+#   gcloud run jobs execute ebook-migrate --region asia-northeast1 --wait
+module "migrate_job" {
+  source = "../../modules/job"
+
+  project_id = var.project_id
+  region     = var.region
+  name       = "ebook-migrate"
+  image      = "${module.registry.url}/api:v1"
+
+  args = ["artisan", "migrate", "--force"]
+
+  cloudsql_connection_name = module.database.connection_name
+
+  # oneshot モードなので Web 用の変数 (CDN_BASE_URL など) は要らない。
+  # APP_KEY は entrypoint.sh が起動時に必ず要求する
+  env = {
+    APP_ENV       = "production"
+    APP_DEBUG     = "false"
+    APP_TIMEZONE  = "Asia/Tokyo"
+    DB_CONNECTION = "mysql"
+    DB_SOCKET     = "/cloudsql/${module.database.connection_name}"
+    DB_DATABASE   = module.database.database_name
+    DB_USERNAME   = module.database.database_user
+    DB_TIMEZONE   = "+09:00"
+  }
+  secret_env = local.common_secret_env
 }
