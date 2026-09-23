@@ -680,16 +680,18 @@ terraform output name_servers
 インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
 
 <!--
-  1〜5 は対応済みのため表から削除した。
+  1〜6 は対応済みのため表から削除した。
   1〜3 の実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
   4 の実装: .env.example と config/database.php のコメント。
   5 の実装: docker/prod/entrypoint.sh の APP_KEY チェック。
+  6 の実装: docker/prod/entrypoint.sh の CDN_BASE_URL チェック。
 
   | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
   | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
   | 3 | `composer install --no-dev --optimize-autoloader` をビルド時に | 起動のたびに composer が走る今の entrypoint は本番では不可 |
   | 4 | `DB_SOCKET` 対応の確認 | Laravel の `config/database.php` は `unix_socket` を既定で見る。TCP 用の `DB_HOST` は空にする |
   | 5 | `APP_KEY` を Secret Manager から | 起動のたびに生成すると暗号化済みデータが読めなくなる |
+  | 6 | `CDN_BASE_URL=https://cdn.ebook.furusawa.work` | 画像の配り元。ホストが変わるだけで、組み立てロジックは Step.02 のまま |
 
   4 について: 実機で確認したところ、DB_SOCKET が空でなければ Laravel は
   host/port を見ずにソケットで接続するため、表にあった「TCP 用の DB_HOST は
@@ -703,13 +705,18 @@ terraform output name_servers
   使う経路に来て初めて MissingAppKeyException で落ちることを実機で確認したため、
   entrypoint で先に止めている。
 
+  6 について: 組み立てロジックは Step.02 のままで、変えたのはホスト名だけ
+  (config('cdn.base_url') は rtrim してあるので末尾スラッシュ付きでも問題ない)。
+  ただし config/cdn.php の既定値が開発用の localhost なので、本番で渡し忘れても
+  コンテナは起動し API も 200 を返し、画像 URL だけが localhost になって
+  ブラウザから取得できない状態になる。監視では気づけないため entrypoint で止めている。
+
   残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
   番号で参照しているため、振り直すと対応が取れなくなる。
 -->
 
 | # | 変更 | 理由 |
 |---|---|---|
-| 6 | `CDN_BASE_URL=https://cdn.ebook.furusawa.work` | 画像の配り元。ホストが変わるだけで、組み立てロジックは Step.02 のまま |
 | 7 | **CORS をオリジン指定で明示する** | `www.` から `api.` への `fetch` はクロスオリジン。下記参照 |
 | 8 | `APP_URL=https://api.ebook.furusawa.work` | 生成される絶対 URL の基点 |
 | 9 | **`TrustProxies` を有効にする** | LB 配下では `X-Forwarded-Proto` を信頼しないと `url()` が `http://` を吐く |

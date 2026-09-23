@@ -36,6 +36,19 @@ case "${APP_KEY}" in
     ;;
 esac
 
+# CDN_BASE_URL も必ず外から渡す (step07 の 6)。
+#
+# config/cdn.php の既定値は開発用の http://localhost:8082 で、未設定でも
+# コンテナは起動し API も 200 を返す。壊れるのは返ってくる画像 URL だけで、
+# 監視からは正常に見えるのにブラウザでは全ページの画像が表示されない。
+#   例: https://cdn.ebook.furusawa.work
+if [ -z "${CDN_BASE_URL}" ]; then
+  echo "[entrypoint] CDN_BASE_URL が設定されていません。起動を中止します。" >&2
+  echo "[entrypoint] 未設定だと画像URLが localhost になり、ブラウザから取得できません。" >&2
+  echo "[entrypoint]   例: gcloud run deploy ... --set-env-vars=CDN_BASE_URL=https://cdn.ebook.furusawa.work" >&2
+  exit 1
+fi
+
 # Cloud Run はリッスンすべきポートを $PORT で渡してくる (既定 8080)。
 # nginx は設定ファイル内で環境変数を展開できないのでここで埋める。
 # 置換対象を ${PORT} に限定しないと $uri などの nginx 変数まで消える。
