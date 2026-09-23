@@ -52,6 +52,8 @@ return [
             'database' => env('DB_DATABASE', 'laravel'),
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
+            // 空でなければ host / port より優先され、UNIX ソケットで接続する。
+            // Cloud Run から Cloud SQL に繋ぐときは /cloudsql/<接続名> を渡す。
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
