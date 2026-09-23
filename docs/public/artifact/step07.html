@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>本番前チェックノート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / infra</div>
+    <h1>本番に出す前に塞ぐ</h1>
+    <p class="tagline">GCP に載せる前に、ローカルでしか成立していない前提を洗い出した。厄介だったのは落ちる設定ではなく、<b>設定を忘れても起動してしまう</b>設定のほう。監視は正常を示すのに利用者だけが壊れている、という形で表に出る。</p>
+    <div class="meta">
+      <span><b>対象</b> backend · frontend · compose</span>
+      <span><b>項目</b> 17</span>
+      <span><b>テスト</b> +19本 (計84)</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s0">このステップの位置づけ</a></li>
+      <li><a href="#s1">本番用イメージを作る</a></li>
+      <li><a href="#s2">黙って壊れる設定を起動時に止める</a></li>
+      <li><a href="#s3">接続と URL の前提</a></li>
+      <li><a href="#s4">届く範囲を絞る</a></li>
+      <li><a href="#s5">使い捨てインスタンスの前提</a></li>
+      <li><a href="#s6">監視とフロントの接続先</a></li>
+      <li><a href="#s7">アップロード上限は4層ある</a></li>
+      <li><a href="#s8">Terraform を書く前の準備</a></li>
+      <li><a href="#s9">ハマりどころ</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 0 -->
+  <section id="s0">
+    <h2 data-sec="§00">このステップの位置づけ</h2>
+    <p class="lede">設計を書いたら、そのままでは本番で動かない箇所が 17 個出てきた。Terraform を書く前に、まずアプリ側をそこへ寄せる。</p>
+
+    <div class="flow">
+      <div class="flow__box">設計を書く<br><span class="c">step07.md</span></div>
+      <div class="flow__arrow">→</div>
+      <div class="flow__box"><b>アプリ側 17 項目</b><br><span class="c">このノート</span></div>
+      <div class="flow__arrow">→</div>
+      <div class="flow__box">準備<br><span class="c">terraform / GCP</span></div>
+      <div class="flow__arrow">→</div>
+      <div class="flow__box">Terraform を書く<br><span class="c">Step.08</span></div>
+    </div>
+
+    <p>17 項目のうち、コードを書かずに <b>確認と記録だけで済んだものが 2 つ</b>あった（<code>DB_SOCKET</code> と <code>APP_URL</code>）。逆に、表の指示どおりに書くと壊れるものも 2 つあった。どちらも実機で動かすまで分からなかった。</p>
+
+    <div class="note">
+      <span class="note__label">このノートの見どころ</span>
+      <p>17 項目を淡々と並べるより、<b>同じ種類の失敗でまとめた</b>ほうが読みやすいので、章はそのように切ってある。元の番号は各項目に括弧で添えた。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">本番用イメージを作る</h2>
+    <p class="lede">開発用の <code>Dockerfile</code> は bind mount 前提で、起動のたびに <code>composer install</code> が走る。本番用は別ファイルに分けた。<span class="c">(1 / 2 / 3)</span></p>
+
+    <p>Cloud Run は<b>1コンテナしか起動できない</b>。開発では nginx と php-fpm を別サービスに分けていたが、本番は <code>supervisord</code> で同居させる。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>層</th><th>開発</th><th>本番</th></tr></thead>
+        <tbody>
+          <tr><td>HTTP</td><td><code>backend-web</code> コンテナ</td><td>同一コンテナ内の nginx</td></tr>
+          <tr><td>PHP</td><td><code>backend</code> コンテナ</td><td>同一コンテナ内の php-fpm</td></tr>
+          <tr><td>接続</td><td><code>fastcgi_pass backend:9000</code></td><td><code>fastcgi_pass 127.0.0.1:9000</code></td></tr>
+          <tr><td>vendor</td><td>ホストを bind mount</td><td>ビルド時に焼き込む</td></tr>
+          <tr><td>ポート</td><td><code>80</code> 固定</td><td><code>$PORT</code>（既定 8080）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>ここで一番効いたのは <b>片方のプロセスが死んだときの扱い</b>だった。php-fpm だけ落ちて nginx が生き残ると、コンテナは「起動中」に見えるのに全リクエストが 502 になる。supervisord のイベントリスナで、どちらかが終了したらコンテナごと落とすようにした。</p>
+
+<pre><span class="c">; supervisord.conf — 片肺運転をさせない</span>
+[eventlistener:quit_on_failure]
+command=/usr/local/bin/stop-supervisor.sh
+events=PROCESS_STATE_FATAL,PROCESS_STATE_EXITED</pre>
+
+    <p>実際に <code>kill -9</code> で php-fpm を落として確認した。イベントリスナが発火し、nginx も停止してコンテナが終了する。Cloud Run ならここで新しいインスタンスが作り直される。</p>
+
+    <div class="note note--warn">
+      <span class="note__label">ビルド初回は起動に失敗した</span>
+      <p><code>Class "Laravel\Pail\PailServiceProvider" not found</code>。<code>bootstrap/cache/packages.php</code> は git 管理外だが、<b><code>.dockerignore</code> は <code>.gitignore</code> とは別物</b>なので、開発中に生成された「dev 依存を含む検出キャッシュ」がイメージに入り込んでいた。<code>--no-dev</code> の vendor には <code>laravel/pail</code> が無いので落ちる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">黙って壊れる設定を起動時に止める</h2>
+    <p class="lede">このステップで一番学びがあった部分。<b>設定を忘れてもコンテナは起動し、API は 200 を返す</b>。壊れているのは利用者から見える一部分だけで、監視には映らない。<span class="c">(5 / 6)</span></p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>設定</th><th>忘れると</th><th>気づくのは</th></tr></thead>
+        <tbody>
+          <tr><td><code>APP_KEY</code></td><td>起動する。DB を読む API も 200</td><td>管理画面にログインしようとした瞬間<br><code>MissingAppKeyException</code></td></tr>
+          <tr><td><code>CDN_BASE_URL</code></td><td>起動する。API も 200</td><td>画像URLが <code>http://localhost:8082/…</code> になり、ブラウザで全ページの画像が出ない</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>どちらも「既定値のままだと間違っている」種類の設定なので、entrypoint で先に止めることにした。</p>
+
+<pre><span class="c"># 未設定なら起動を中止する</span>
+if [ -z <span class="s">"${APP_KEY}"</span> ]; then
+  echo <span class="s">"[entrypoint] APP_KEY が設定されていません。起動を中止します。"</span> &gt;&amp;2
+  exit 1
+fi
+
+<span class="c"># base64: 形式なら鍵長も見る。短い鍵は起動を通過して暗号化の時点で落ちる</span>
+case <span class="s">"${APP_KEY}"</span> in
+  base64:*)
+    key_bytes=$(printf <span class="s">'%s'</span> <span class="s">"${APP_KEY#base64:}"</span> | base64 -d | wc -c)
+    [ <span class="s">"${key_bytes}"</span> = 32 ] || [ <span class="s">"${key_bytes}"</span> = 16 ] || exit 1
+    ;;
+esac</pre>
+
+    <div class="note">
+      <span class="note__label">守りを入れる基準</span>
+      <p>全部の環境変数を必須にはしていない。<b>「既定値のままだと間違っている」ものだけ</b>を止める。<code>SESSION_DRIVER</code> は既定値がそもそも正しい（<code>database</code>）ので入れていないし、<code>APP_URL</code> は間違っていても現状は壊れないので入れていない。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">接続と URL の前提</h2>
+    <p class="lede">3 項目。うち 2 つは<b>コードを書かずに終わった</b>。実機で測って「不要だった」と分かった形。<span class="c">(4 / 8 / 9)</span></p>
+
+    <h3>Cloud SQL への UNIX ソケット接続 <span class="c">(4)</span></h3>
+    <p><code>config/database.php</code> には最初から <code>'unix_socket' =&gt; env('DB_SOCKET', '')</code> があり、変更は要らなかった。設計メモには「TCP 用の <code>DB_HOST</code> は空にする」と書いてあったが、<b>実測したら空にする必要はなかった</b>。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>条件</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td><code>DB_SOCKET</code> のみ</td><td>接続成功</td></tr>
+          <tr><td><code>DB_SOCKET</code> + <code>DB_HOST=存在しないホスト</code></td><td><b>接続成功</b></td></tr>
+          <tr><td><code>DB_SOCKET</code> 空 + 存在しないホスト（対照）</td><td><code>getaddrinfo</code> で失敗</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><code>MySqlConnector::getDsn()</code> は <code>unix_socket</code> が空でなければ <code>host</code>/<code>port</code> を一切見ない。3 番目の対照実験が失敗したことで、テスト自体が機能していることも確認できた。</p>
+
+    <div class="note note--warn">
+      <span class="note__label">db:show の Host 欄は当てにならない</span>
+      <p>ソケット接続でも <code>config('database.connections.mysql.host')</code> の値をそのまま表示する。上の 2 番目では <code>this-host-does-not-exist</code> と表示されながら、実際にはソケットで繋がっていた。</p>
+    </div>
+
+    <h3>APP_URL はリクエスト中には効かない <span class="c">(8)</span></h3>
+    <p><code>APP_URL</code> とリクエスト元をわざと食い違わせて測った。</p>
+
+<pre><span class="c"># APP_URL = https://api.ebook.furusawa.work / リクエストは http://localhost:9098</span>
+Web リクエスト中の route()  → http://localhost:9098/admin/login   <span class="c">← リクエスト由来</span>
+コンソールの route()        → https://api.ebook.furusawa.work/…   <span class="c">← APP_URL 由来</span></pre>
+
+    <p>効くのは artisan・キュー・メールのように<b>リクエストが無い文脈</b>だけ。このアプリはそのどれも使っていないので、現状 <code>APP_URL</code> は実行時の挙動に影響しない。それでも値を入れるのは、後でキューを足したときに <code>http://localhost</code> が混入しないようにするため。</p>
+
+    <h3>TrustProxies は Proto と Port だけ信頼する <span class="c">(9)</span></h3>
+    <p>LB が TLS を終端するので、転送ヘッダを信頼しないと生成 URL が <code>http://</code> のままになる。ただし <b><code>X-Forwarded-For</code> はあえて信頼しない</b>。</p>
+
+<pre>$middleware-&gt;trustProxies(
+    at: <span class="s">'*'</span>,
+    headers: Request::HEADER_X_FORWARDED_PROTO | Request::HEADER_X_FORWARDED_PORT,
+);</pre>
+
+    <p>ログインのレート制限が <code>email|ip</code> をキーにしているため、信頼するとクライアントが IP を名乗り換えるだけで総当たり対策を回避できる。さらに Google の LB は受け取った <code>X-Forwarded-For</code> の<b>右側</b>に実 IP を足す形式なので、左端を実 IP とみなす Symfony の既定とは噛み合わない。信頼しなければ <code>$request-&gt;ip()</code> はプロキシの IP になるが、これは変更前と同じ挙動なので退行しない。</p>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">届く範囲を絞る</h2>
+    <p class="lede">サブドメインで役割を分けた結果、<b>誰がどこに届いてよいか</b>を明示する必要が出てきた。<span class="c">(7 / 15 / 16)</span></p>
+
+    <h3>CORS <span class="c">(7)</span></h3>
+    <p><code>config/cors.php</code> を置いていなかったので、フレームワーク既定の <code>allowed_origins =&gt; ['*']</code> が効いていた。どのサイトからでも API を読める状態だった。</p>
+
+<pre><span class="c">// 環境ごとに変わるのでカンマ区切りの環境変数から読む</span>
+<span class="s">'allowed_origins'</span> =&gt; array_values(array_filter(array_map(
+    trim(...),
+    explode(<span class="s">','</span>, (string) env(<span class="s">'CORS_ALLOWED_ORIGINS'</span>, <span class="s">'http://localhost:8080'</span>)),
+), static fn (string $origin): bool =&gt; $origin !== <span class="s">''</span>))</pre>
+
+    <div class="note note--warn">
+      <span class="note__label">許可オリジンが1つだと挙動が変わる</span>
+      <p>開発で <code>https://evil.example</code> から叩いても <code>Access-Control-Allow-Origin: http://localhost:8080</code> が返ってきて、一瞬バグに見えた。<code>php-cors</code> は許可が 1 つだけなら<b>リクエスト元に関係なく固定値を返す</b>（<code>isSingleOriginAllowed</code>）。値が一致しないのでブラウザが弾く＝安全側だが、「許可外ならヘッダが無い」と思い込むと読み違える。テストに明示して残した。</p>
+    </div>
+
+    <h3>セッション Cookie <span class="c">(15)</span></h3>
+    <p>設計メモは <code>SESSION_DOMAIN=admin.ebook.furusawa.work</code> を入れる想定だったが、<b>実測すると逆だった</b>。</p>
+
+<pre>未設定 → Set-Cookie: …; path=/; httponly; samesite=lax
+指定   → Set-Cookie: …; path=/; <span class="s">domain=admin.ebook.furusawa.work</span>; httponly; samesite=lax</pre>
+
+    <p>RFC 6265 では <code>Domain</code> を省くとホスト限定 Cookie になり、そのホストにしか送られない。指定すると<b>配下のサブドメインにも送られる</b>。つまり <code>null</code> の方が厳しいので、そちらを採用した。</p>
+
+    <p><code>SESSION_SECURE_COOKIE</code> は環境変数で渡すのをやめ、<b>既定値を <code>APP_ENV=production</code> なら true</b> にした。渡し忘れても安全側に倒れる。</p>
+
+    <h3>管理画面のホスト限定 <span class="c">(16)</span></h3>
+    <p><code>api.</code> と <code>admin.</code> は<b>同じイメージの別サービス</b>なので、そのままだと <code>api.ebook.furusawa.work/admin/…</code> でも管理画面に届く。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>ADMIN_HOST</th><th>Host ヘッダ</th><th>/admin/login</th><th>/api/books</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="3"><code>admin.ebook.…</code></td><td><code>admin.ebook.…</code></td><td>200</td><td>200</td></tr>
+          <tr><td><code>api.ebook.…</code></td><td><b>404</b></td><td>200</td></tr>
+          <tr><td><code>www.ebook.…</code></td><td><b>404</b></td><td>200</td></tr>
+          <tr><td>未設定</td><td>どれでも</td><td>200</td><td>200</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>空なら制限しない作りにしてある。開発は api も admin も <code>localhost</code> で兼ねているため。公開 API は <code>www.</code> から叩かれるのでホスト制限をかけていない。</p>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">使い捨てインスタンスの前提</h2>
+    <p class="lede">Cloud Run のインスタンスは使い捨てで、同時に複数立つ。ローカルの前提がそのまま壊れる。<span class="c">(10 / 13 / 14)</span></p>
+
+    <h3>セッションがファイルだと切れる <span class="c">(13)</span></h3>
+    <p>同じ DB を共有する 2 インスタンスを立て、A でログインして同じ Cookie で B を叩いた。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>SESSION_DRIVER</th><th>同じインスタンス(A)</th><th>別インスタンス(B)</th></tr></thead>
+        <tbody>
+          <tr><td><code>file</code></td><td>200</td><td><b>302</b>（ログイン画面へ）</td></tr>
+          <tr><td><code>database</code></td><td>200</td><td>200</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>調べると<b>本番イメージは既に <code>database</code> だった</b>。<code>.dockerignore</code> で <code>.env</code> を除外しているため <code>config/session.php</code> の既定値が効く。実際の問題は「開発が file、本番が database」という食い違いで、この状態ではセッション絡みの不具合がローカルで再現しない。</p>
+
+    <h3>マイグレーションは起動時に流さない <span class="c">(10)</span></h3>
+    <p>起動時に流さないことは最初から満たしていた。足りなかったのは<b>分離した実行経路</b>のほうで、同じイメージに <code>artisan</code> を渡すと Web 用の準備が全部走り、画像URLを作らない <code>migrate</code> にまで <code>CDN_BASE_URL</code> を要求して失敗していた。</p>
+
+<pre><span class="c"># entrypoint に実行モードの分岐を入れる</span>
+case <span class="s">"${1:-}"</span> in
+  supervisord) run_mode=web ;;
+  *)           run_mode=oneshot ;;
+esac</pre>
+
+    <p><code>oneshot</code> では nginx 設定生成もキャッシュ作成も飛ばし、要求するのは <code>APP_KEY</code> だけにした。Cloud Run Jobs から <code>php artisan migrate --force</code> を叩ける。</p>
+
+    <h3>画像の保存先を GCS にする <span class="c">(14)</span></h3>
+    <p>設計メモのとおり disk の定義だけの差し替えで済み、<code>Storage::disk('cdn')</code> を呼ぶコントローラは 1 行も変えていない。ただし<b>書かれていない前提が 2 つ</b>あった。</p>
+
+    <div class="note note--warn">
+      <span class="note__label">そのままでは動かない2点</span>
+      <p><b>(a)</b> Laravel が同梱するドライバは local / s3 / ftp / sftp だけで <code>gcs</code> は無い。<code>Storage::extend</code> で自分で繋ぐ必要がある。<br>
+      <b>(b)</b> <code>'visibility' =&gt; 'public'</code> をそのまま渡すと 400 になる。<code>allUsers:objectViewer</code> をバケットに付ける形は<b>均一なバケットレベルのアクセス</b>で、オブジェクト単位の ACL が使えない。<code>UniformBucketLevelAccessVisibility</code> を渡して無効化する。</p>
+    </div>
+
+    <p>検証は <code>fake-gcs-server</code> に向けて実施した。<code>put</code> / <code>exists</code> / <code>get</code> / <code>size</code> / <code>delete</code> と、管理画面が実際に使う <code>putFileAs</code> まで通ることを確認している。</p>
+  </section>
+
+  <!-- ================================================== 6 -->
+  <section id="s6">
+    <h2 data-sec="§06">監視とフロントの接続先</h2>
+    <p class="lede"><span class="c">(11 / 12)</span></p>
+
+    <h3>/api/health は 2 段にした <span class="c">(11)</span></h3>
+    <p>既定は<b>DB に触らない浅い確認</b>。LB のヘルスチェックが DB まで見て 503 を返す作りだと、DB が一瞬詰まっただけで全インスタンスが不健全と判定されて同時に作り直され、障害が広がる。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th></th><th>DB 正常</th><th>DB 停止中</th></tr></thead>
+        <tbody>
+          <tr><td><code>/api/health</code></td><td>200</td><td><b>200</b>（LB はインスタンスを殺さない）</td></tr>
+          <tr><td><code>/api/health?deep=1</code></td><td>200</td><td><b>503</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>フロントの接続先 <span class="c">(12)</span></h3>
+    <p>ベースURLは <code>reader.js</code> と <code>library.js</code> に同じ値が重複していた。<code>js/config.js</code> に集約し、<b>開いているページのホスト名から接続先を決める</b>方式にした。</p>
+
+    <p>環境ごとにファイルを差し替える方式にしなかったのは、本番用に書き換え忘れると公開サイトが localhost の API を見に行くため。§02 と同じ種類の事故で、<b>アップロードするファイルを環境で変えなければ起きない</b>。</p>
+  </section>
+
+  <!-- ================================================== 7 -->
+  <section id="s7">
+    <h2 data-sec="§07">アップロード上限は4層ある</h2>
+    <p class="lede">「32MiB 未満に揃える」の <b>揃える対象が 4 つ</b>あった。外側ほど大きくないと内側まで届かない。<span class="c">(17)</span></p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>層</th><th>値</th><th>役割</th></tr></thead>
+        <tbody>
+          <tr><td>Laravel バリデーション</td><td>8MB</td><td>利用者に見える上限。日本語のエラーを出す</td></tr>
+          <tr><td><code>upload_max_filesize</code></td><td>10M</td><td>ここが 8MB 未満だと PHP がファイルを捨てる</td></tr>
+          <tr><td><code>post_max_size</code></td><td>12M</td><td>ファイル + フォーム項目 + マルチパート境界</td></tr>
+          <tr><td><code>client_max_body_size</code></td><td>16m</td><td>nginx</td></tr>
+          <tr><td>Cloud Run</td><td>32MiB</td><td>変更不可。上のすべてが下回ること</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>開発の PHP が既定の <code>2M</code> / <code>8M</code> のままで、アプリが許すはずの 5.61MB が弾かれていた。しかも出るのは日本語メッセージですらない。</p>
+
+<pre><span class="c"># 5.61MB を送った結果（アプリの上限は 8MB）</span>
+画像 failed to upload.</pre>
+
+    <p>本番だけ 30M にしていたため、ローカルでは再現しない状態になっていた。<code>php.d/zz-app.ini</code> を追加して揃えた結果が次のとおり。</p>
+
+<pre> 5MB  → HTTP 201  成功
+ 9MB  → HTTP 302  「画像は 8MB 以内にしてください。」
+20MB  → HTTP 413  nginx が受け取り拒否</pre>
+  </section>
+
+  <!-- ================================================== 8 -->
+  <section id="s8">
+    <h2 data-sec="§08">Terraform を書く前の準備</h2>
+    <p class="lede">Terraform で作れないもの＝ Terraform を動かすための土台。ここだけは手で叩く。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>項目</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td>terraform</td><td>v1.16.3</td></tr>
+          <tr><td>GCP プロジェクト</td><td>作成済み・課金紐付け済み</td></tr>
+          <tr><td>認証（ADC）</td><td><code>application_default_credentials.json</code> + quota project</td></tr>
+          <tr><td>権限</td><td><code>roles/owner</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note note--warn">
+      <span class="note__label">brew install terraform は通らない</span>
+      <p>2023 年に HashiCorp がライセンスを BUSL へ変更し、homebrew-core から外された。<code>No available formula with the name "terraform"</code> が出る。公式 tap（<code>brew tap hashicorp/tap</code>）か OpenTofu を使う。</p>
+    </div>
+
+    <p>API の有効化（<code>google_project_service</code>）は Terraform 側でやる。bootstrap が使う <code>storage.googleapis.com</code> と <code>serviceusage.googleapis.com</code> は既に有効だったので、<b>鶏卵問題は踏まずに済む</b>見込み。</p>
+  </section>
+
+  <!-- ================================================== 9 -->
+  <section id="s9">
+    <h2 data-sec="§09">ハマりどころ</h2>
+    <p class="lede">実機で動かすまで分からなかったもの。</p>
+
+    <ul>
+      <li><b>nginx の <code>access_log off</code> が効かない。</b> ヘルスチェックをログから外そうと <code>location = /api/health</code> に書いたが、<code>try_files</code> で <code>/index.php</code> へ内部リダイレクトされ、ログは最終的に処理した <code>location ~ \.php$</code> の設定で出る。<code>map</code> による条件付き <code>access_log</code> に変更した。</li>
+      <li><b>nginx.conf はバインドマウントでも reload が要る。</b> ファイルは即座に反映されるが、プロセスは古い設定で動き続ける。20MB のテストで 413 のはずが 200 を返して気づいた。</li>
+      <li><b><code>.dockerignore</code> は <code>.gitignore</code> とは別物。</b> git 管理外のファイルでもビルドコンテキストには入る。dev 依存を含む検出キャッシュが本番イメージに混入した。</li>
+      <li><b>ルートのホスト制限はアプリ起動時に確定する。</b> テストで <code>config()</code> を後から書き換えても効かず、<code>createApplication()</code> を上書きする必要があった。</li>
+      <li><b>PNG は中身次第で圧縮される。</b> 大きいファイルを作るテストで、規則的なピクセルだと 5MB のつもりが 0.0MB になった。<code>os.urandom</code> で非圧縮データにして作り直した。</li>
+    </ul>
+
+    <div class="note">
+      <span class="note__label">まとめ</span>
+      <p>17 項目のうち、<b>実際に設計メモと違っていたのは 4 つ</b>（4 の <code>DB_HOST</code>、15 の <code>SESSION_DOMAIN</code>、14 の visibility、17 の層の数）。どれも「書かれていることが間違い」ではなく、<b>実機で測らないと分からない粒度</b>の話だった。</p>
+    </div>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">
+    ebook.furusawa.work — Step.07 / infra 準備<br>
+    Laravel 13.32 · PHP 8.4 · Cloud Run 前提の本番イメージ · テスト 84本
+  </p>
+
+</div>
+</body>
+</html>
