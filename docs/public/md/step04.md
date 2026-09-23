@@ -16,6 +16,66 @@ Step.03 でテーブルとモデルを用意したので、このステップで
 | 7 | php-fpm&nginxへ切り替え | `artisan serve` からの脱却 |
 | 8 | テスト用DBがないときは作成 / 作成方法を変更 | 初期化スクリプト → PHPUnit の bootstrap |
 
+## 構成
+
+コンテナは 6 つから 7 つになりました。増えたのは `backend-web` で、**これまで `backend` 1 つが担っていた「HTTP を受ける」と「PHP を実行する」を分けた**ものです。
+
+```
+                 ┌──────────────────────────┐
+ブラウザ ────────▶│ frontend  :8080  (nginx) │  ビューア本体
+    │            └──────────────────────────┘
+    │            ┌──────────────────────────┐   ┌──────────────────┐
+    ├─ fetch ───▶│ backend-web :8000 (nginx)│──▶│ backend (php-fpm)│
+    │            └──────────────────────────┘   └──────────────────┘
+    │            ┌──────────────────────────┐            │
+    └─ <img> ───▶│ cdn       :8082  (nginx) │            ▼
+                 └──────────────────────────┘   ┌──────────────────┐
+                 ┌──────────────────────────┐   │ db  :3306 (MySQL)│
+                 │ docs      :8081  (nginx) │   └──────────────────┘
+                 └──────────────────────────┘            ▲
+                                                ┌──────────────────┐
+                                                │ phpmyadmin :8083 │
+                                                └──────────────────┘
+```
+
+| サービス | ポート | イメージ | 役割 |
+|---|---|---|---|
+| `backend-web` | 8000 | `nginx:1.27-alpine` | HTTP の受け口。静的ファイルを返し、PHP は `backend:9000` へ渡す |
+| `backend` | （9000・内部のみ） | `php:8.4-fpm-alpine` | PHP の実行のみ。ホストにはポートを公開しない |
+
+**ブラウザから見た口は `:8000` のままです。** 受け口が `artisan serve` から nginx に変わっただけなので、フロントエンドは 1 行も変更していません。
+
+```yaml
+backend-web:
+  volumes:
+    # public/ を配信し、SCRIPT_FILENAME のパスを backend 側と揃えるため
+    # ソースは同じ /app にマウントする (読み取り専用)
+    - ./backend:/app:ro
+    - ./backend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+```
+
+ソースを両方のコンテナに **同じ `/app` というパスで**マウントしているのが要点です。nginx が fastcgi に渡す `SCRIPT_FILENAME` は nginx 側のパスですが、それを実際に開くのは php-fpm 側なので、**両者でパスが一致していないとファイルが見つかりません**。nginx 側は書き込む必要がないので `:ro` にしています。
+
+## 変更ファイル
+
+| パス | 役割 |
+|---|---|
+| `compose.yaml` | `backend` からポート公開を外し、`backend-web` を追加 |
+| `backend/Dockerfile` | `php:8.4-cli-alpine` → `php:8.4-fpm-alpine`。composer を同梱 |
+| `backend/nginx.conf` | API 前段の nginx。`public/` の配信と fastcgi への受け渡し |
+| `backend/php-fpm.d/zz-app.conf` | `clear_env = no`。compose の環境変数を PHP に届ける |
+| `backend/routes/api.php` | `{code}` → `{book}`（ルートモデルバインディング） |
+| `backend/app/Http/Controllers/Api/BookController.php` | 定数を Eloquent に差し替え、整形は Resource へ移譲 |
+| `backend/app/Http/Resources/BookResource.php` | 書誌情報 + ページ一覧の JSON 整形 |
+| `backend/app/Http/Resources/BookPageResource.php` | ページ 1 件の整形。CDN URL とキャッシュバスターの組み立て |
+| `backend/app/Models/Book.php` | `#[RouteKey('code')]`、`resolveRouteBinding()` で `is_active` まで絞る |
+| `backend/app/Models/BookPage.php` | `HasFactory` の追加 |
+| `backend/database/factories/BookFactory.php` | 書籍のテストデータ生成 |
+| `backend/database/factories/BookPageFactory.php` | ページのテストデータ生成 |
+| `backend/phpunit.mysql.xml` | MySQL でテストを流すための設定 |
+| `backend/tests/bootstrap-mysql.php` | `ebooks_test` が無ければ作ってからテストを始める |
+| `backend/tests/Feature/Api/BookApiTest.php` | API のテスト |
+
 ## 1. 定数を Eloquent に差し替える
 
 ```php
