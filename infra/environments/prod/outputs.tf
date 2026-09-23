@@ -22,3 +22,28 @@ output "app_key_secret_id" {
   description = "APP_KEY の Secret 名。値は手で投入する"
   value       = module.database.app_key_secret_id
 }
+
+output "buckets" {
+  description = "gcloud storage rsync の宛先"
+  value = {
+    frontend = module.frontend.bucket_name
+    cdn      = module.cdn.bucket_name
+    docs     = module.docs.bucket_name
+  }
+}
+
+output "cloud_run" {
+  description = "Cloud Run のサービス。ingress を LB 限定にしてあるので uri は直接叩けない"
+  value = {
+    api = {
+      name = module.api.name
+      uri  = module.api.uri
+      sa   = module.api.service_account_email
+    }
+    admin = {
+      name = module.admin.name
+      uri  = module.admin.uri
+      sa   = module.admin.service_account_email
+    }
+  }
+}
