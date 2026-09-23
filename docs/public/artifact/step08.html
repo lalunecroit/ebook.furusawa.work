@@ -506,8 +506,12 @@ cd ../environments/prod
 terraform apply -target=module.registry
 
 <span class="c"># ③ イメージを push</span>
-docker build -f backend/Dockerfile.prod -t &lt;registry&gt;/app/api:v1 ./backend
-docker push &lt;registry&gt;/app/api:v1
+<span class="c">cd ../../..</span>
+docker build --platform linux/amd64 \
+  -f backend/Dockerfile.prod \
+  -t asia-northeast1-docker.pkg.dev/my-project-book-509215/app/api:v1 \
+  ./backend
+docker push asia-northeast1-docker.pkg.dev/my-project-book-509215/app/api:v1
 
 <span class="c"># ④ 残り全部</span>
 terraform apply

@@ -89,17 +89,44 @@ cd ../environments/prod
 terraform init
 terraform apply -target=module.registry
 
-# ③ イメージを push
+# ③ イメージを push（パスがリポジトリルート基準なので戻る）
+cd ../../..
 gcloud auth configure-docker asia-northeast1-docker.pkg.dev
-docker build -f backend/Dockerfile.prod -t <registry>/app/api:v1 ./backend
-docker push <registry>/app/api:v1
+docker build --platform linux/amd64 \
+  -f backend/Dockerfile.prod \
+  -t asia-northeast1-docker.pkg.dev/my-project-book-509215/app/api:v1 \
+  ./backend
+docker push asia-northeast1-docker.pkg.dev/my-project-book-509215/app/api:v1
 
 # ④ 残り全部
+cd infra/environments/prod
 terraform apply
 
-# ⑤ 静的ファイルを流し込む
-# ⑥ ネームサーバをレジストラ側に設定
+# ⑤ 静的ファイルを流し込む（リポジトリルートから）
+# ⑥ ネームサーバをレジストラ側に設定（5.1 の通り不要）
 ```
+
+**`cd` の行き来に注意します。** ①②④は `infra/` 配下、③⑤はリポジトリルートが基準です。
+`terraform` 側を `terraform -chdir=infra/environments/prod apply` の形に統一すれば
+ずっとルートに居られますが、ここでは公式ドキュメントに合わせて `cd` する書き方にしています。
+
+### 3.1 ③ で踏みやすいところ
+
+**`--platform linux/amd64` は必須です。** 手元は Apple Silicon（`darwin_arm64`）なので、
+付けないと arm64 のイメージができます。**Cloud Run が動かせるのは amd64 だけ**で、
+push も deploy も成功したように見えたうえで、**起動時に `exec format error` で落ちます**。
+エミュレーション越しのビルドになるため時間は掛かりますが、それが正常です。
+
+**イメージ名に `app` を二重に書かないこと。** `terraform output registry_url` が返すのは
+`asia-northeast1-docker.pkg.dev/my-project-book-509215/app` で、**リポジトリ名まで含んでいます**。
+イメージ名はこれに `/api:v1` を足した形です。
+
+**ビルドコンテキストは `./backend`。** `Dockerfile.prod` の `COPY docker/prod/...` や
+`COPY composer.json` はすべて `backend/` からの相対パスなので、リポジトリルートから叩くなら
+`-f` でファイルを指し、コンテキストは `./backend` を渡します。
+
+**タグは `v1` で進めます。** 5 章の未決事項に挙げた「`v1` 固定かコミットハッシュか」は、
+CI を入れる段階で決めれば足ります。それまで手で push するので `v1` の上書きで困りません。
 
 ---
 
@@ -189,7 +216,6 @@ resource "google_dns_record_set" "api" {
 
 ## 現時点の未確認事項
 
-- Terraform のコードはまだ 1 行も書いていません。Step.07 の骨子は `terraform validate` を通していません
 - Step.07 の 3 章は DNS ゾーンを `google_dns_managed_zone` で新規作成する前提ですが、5.1 の通り**既存ゾーンを `data` で参照する**形に変わります
 - backend bucket の index.html 解決（Step.07 の 8 章）は実機確認が必要です
 - backend bucket に IAP を付けられるかは未確認です
