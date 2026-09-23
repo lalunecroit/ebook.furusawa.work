@@ -169,7 +169,13 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    /*
+     * 本番は既定で true にする。未設定のままだと Secure が付かず、HTTP にも
+     * Cookie が乗る。LB が HTTP を HTTPS にリダイレクトするとはいえ、
+     * リダイレクト前の1往復に載ってしまうため、既定を安全側に倒しておく。
+     * ローカルで本番イメージを http で動かすときだけ false を渡す。
+     */
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

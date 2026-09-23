@@ -680,7 +680,7 @@ terraform output name_servers
 インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
 
 <!--
-  1〜14 は対応済みのため表から削除した。
+  1〜15 は対応済みのため表から削除した。
   1〜3 の実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
   4 の実装: .env.example と config/database.php のコメント。
   5 の実装: docker/prod/entrypoint.sh の APP_KEY チェック。
@@ -693,6 +693,7 @@ terraform output name_servers
   12 の実装: frontend/public/js/config.js。
   13 の実装: .env / .env.example / compose.yaml の SESSION_DRIVER。
   14 の実装: config/filesystems.php と AppServiceProvider::registerGcsDriver()。
+  15 の実装: config/session.php の secure 既定値と .env.example。
 
   | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
   | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
@@ -708,6 +709,7 @@ terraform output name_servers
   | 12 | フロントの `CONFIG.api.base` を `https://api.ebook.furusawa.work/api` に | Step.02 で `reader.js` に書いた API のベース URL |
   | 13 | **`SESSION_DRIVER=database`** | Step.02.5 で file にしたセッションは Cloud Run では保たない。下記参照 |
   | 14 | **`cdn` ディスクを GCS に差し替える** | Step.06 の画像アップロード先。ローカルディスクは Cloud Run に無い |
+  | 15 | `SESSION_SECURE_COOKIE=true` / `SESSION_DOMAIN=admin.ebook.furusawa.work` | Cookie を HTTPS と `admin.` に閉じる |
 
   4 について: 実機で確認したところ、DB_SOCKET が空でなければ Laravel は
   host/port を見ずにソケットで接続するため、表にあった「TCP 用の DB_HOST は
@@ -813,13 +815,29 @@ terraform output name_servers
   管理画面が実際に使う putFileAs が動くことを確認した。
   CDN_DISK 未設定なら従来どおり local のままであることも確認済み。
 
+  15 について: 2点、表の内容から変えている。
+
+  SESSION_SECURE_COOKIE は環境変数で渡すのではなく、config/session.php の
+  既定値を APP_ENV=production なら true にした。渡し忘れても安全側になる。
+  ローカルで本番イメージを http で動かすときだけ false を渡す。
+
+  SESSION_DOMAIN は null のままにした。実測すると、指定した場合は Set-Cookie に
+  domain=admin.ebook.furusawa.work が付き、そのホストとその配下のサブドメインに
+  送られる。指定しなければ domain= が付かずホスト限定 Cookie になる (RFC 6265)。
+  つまり null の方が厳しい。「Cookie を admin. に閉じる」意図はどちらでも満たせる。
+
+  admin は IP 制限をせず公開する方針なので、Cloud Armor (インフラ表の 18) に
+  頼らずアプリ側で守ることになる。現状の防御は
+  Secure / HttpOnly / SameSite=lax の Cookie、CSRF トークン、
+  ログインのレート制限 (email 単位で効く。9 のとおり X-Forwarded-For を
+  信頼していないので IP 成分はプロキシ固定)。
+
   残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
   番号で参照しているため、振り直すと対応が取れなくなる。
 -->
 
 | # | 変更 | 理由 |
 |---|---|---|
-| 15 | `SESSION_SECURE_COOKIE=true` / `SESSION_DOMAIN=admin.ebook.furusawa.work` | Cookie を HTTPS と `admin.` に閉じる |
 | 16 | `app.admin_host` の追加と `Route::domain()` | `api.` から `/admin/*` に届かせない（4.8） |
 | 17 | アップロードの上限を 32MiB 未満に揃える | Cloud Run のリクエストサイズ上限。超えると Laravel まで届かず LB が 413 を返す |
 
