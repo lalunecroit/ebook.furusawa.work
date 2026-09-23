@@ -396,9 +396,10 @@ gcloud storage rsync -r cdn/public/      gs://ebook-cdn/      --cache-control="p
 gcloud storage rsync -r frontend/public/ gs://ebook-frontend/ --cache-control="public, max-age=300"
 gcloud storage rsync -r docs/public/     gs://ebook-docs/     --cache-control="public, max-age=300"
 
-# .md は既定で text/markdown になり「ソース」リンクがダウンロードになるので上書きする
-gcloud storage rsync -r docs/public/md/  gs://ebook-docs/md/  --content-type=text/plain \
-                                                              --cache-control="public, max-age=300"
+# .md は既定で text/markdown になり「ソース」リンクがダウンロードになる。
+# rsync は同期済みのファイルをスキップするので、あとから --content-type を付けた
+# rsync を流しても効かない。アップロード後に objects update で上書きする
+gcloud storage objects update "gs://ebook-docs/md/*.md" --content-type=text/plain
 ```
 
 ### 4.6 URL マップ 1 枚でホスト名を振り分ける
@@ -1125,7 +1126,7 @@ LB もCloud SQL も**秒課金**です。フル構成を建てて 3 日触って
 - [ ] **`admin.` を無制限に公開しない**。Cloud Armor の IP 許可リストか IAP を前段に置く。置かないなら、Step.06 のログイン画面だけが防御になることを承知のうえで
 - [ ] **`Route::domain()` でホストを縛る**。同じイメージなので、`api.` に `/admin/login` を投げれば届いてしまう
 - [ ] **docs の `index.json` を生成してから rsync する**。忘れるとサイドバーが空のまま公開される。CI で「生成して差分が出たら落とす」のが確実
-- [ ] **docs の `.md` に `--content-type=text/plain` を付ける**。既定では「ソース」リンクがダウンロードになる
+- [ ] **docs の `.md` の Content-Type を `text/plain` に直す**。既定の `text/markdown` だと「ソース」リンクがダウンロードになる。rsync はスキップしたファイルのメタデータを触らないので、`gcloud storage objects update` で後から上書きする
 
 ---
 
