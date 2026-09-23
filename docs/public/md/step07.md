@@ -680,7 +680,7 @@ terraform output name_servers
 インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
 
 <!--
-  1〜12 は対応済みのため表から削除した。
+  1〜13 は対応済みのため表から削除した。
   1〜3 の実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
   4 の実装: .env.example と config/database.php のコメント。
   5 の実装: docker/prod/entrypoint.sh の APP_KEY チェック。
@@ -691,6 +691,7 @@ terraform output name_servers
   10 の実装: docker/prod/entrypoint.sh の実行モード分岐。
   11 の実装: Api/HealthController と routes/api.php、tests/Feature/Api/HealthTest.php。
   12 の実装: frontend/public/js/config.js。
+  13 の実装: .env / .env.example / compose.yaml の SESSION_DRIVER。
 
   | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
   | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
@@ -704,6 +705,7 @@ terraform output name_servers
   | 10 | マイグレーションをコンテナ起動時に走らせない | インスタンスが同時に複数立つと競合する。Cloud Run Jobs か手動実行に分離 |
   | 11 | `/api/health` の追加 | 監視と疎通確認用 |
   | 12 | フロントの `CONFIG.api.base` を `https://api.ebook.furusawa.work/api` に | Step.02 で `reader.js` に書いた API のベース URL |
+  | 13 | **`SESSION_DRIVER=database`** | Step.02.5 で file にしたセッションは Cloud Run では保たない。下記参照 |
 
   4 について: 実機で確認したところ、DB_SOCKET が空でなければ Laravel は
   host/port を見ずにソケットで接続するため、表にあった「TCP 用の DB_HOST は
@@ -782,13 +784,25 @@ terraform output name_servers
   なるため。アップロードするファイルを環境で変えなければ、その事故が起きない。
   ステージング等を足すときは config.js の表に1行足すことになる。
 
+  13 について: 本番イメージは .env を含まない (.dockerignore で除外) ため、
+  config/session.php の既定値がそのまま効いて既に database になっていた。
+  実際に本番イメージを SESSION_DRIVER 無しで2つ立てても、片方でログインして
+  もう片方の保護ページが 200 を返すことを確認している。
+  問題は「開発が file、本番が database」と食い違っていたこと。この状態では
+  セッション絡みの不具合がローカルで再現しない。.env / .env.example / compose を
+  database に揃えて明示した。
+  file のときに実際に壊れることも再現済み:
+    file     -> ログインしたインスタンス 200 / 別インスタンス 302 (ログイン画面へ)
+    database -> どちらも 200
+  なお sessions テーブルは Laravel 同梱のマイグレーションで作られるので、
+  表のとおり追加のコードは不要だった。
+
   残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
   番号で参照しているため、振り直すと対応が取れなくなる。
 -->
 
 | # | 変更 | 理由 |
 |---|---|---|
-| 13 | **`SESSION_DRIVER=database`** | Step.02.5 で file にしたセッションは Cloud Run では保たない。下記参照 |
 | 14 | **`cdn` ディスクを GCS に差し替える** | Step.06 の画像アップロード先。ローカルディスクは Cloud Run に無い |
 | 15 | `SESSION_SECURE_COOKIE=true` / `SESSION_DOMAIN=admin.ebook.furusawa.work` | Cookie を HTTPS と `admin.` に閉じる |
 | 16 | `app.admin_host` の追加と `Route::domain()` | `api.` から `/admin/*` に届かせない（4.8） |
