@@ -24,3 +24,12 @@ variable "min_instances" {
   type        = number
   default     = 1
 }
+
+variable "dns_zone_name" {
+  description = <<-EOT
+    レコードを追加する Cloud DNS ゾーンの名前。
+    ゾーン自体は Terraform の管理外で、参照するだけ (step08 の 5.1)。
+  EOT
+  type        = string
+  default     = "furusawa-work"
+}

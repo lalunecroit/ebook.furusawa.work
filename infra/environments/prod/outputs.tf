@@ -52,3 +52,21 @@ output "migrate_job" {
   description = "マイグレーション用の Cloud Run Job。作成しただけでは実行されない"
   value       = module.migrate_job.name
 }
+
+output "lb_ip_address" {
+  description = "LB のグローバル静的 IP"
+  value       = module.frontdoor.ip_address
+}
+
+output "certificate" {
+  description = "マネージド証明書。ACTIVE になるまで 15〜60 分かかる"
+  value = {
+    name    = module.frontdoor.certificate_name
+    domains = module.frontdoor.certificate_domains
+  }
+}
+
+output "urls" {
+  description = "公開 URL"
+  value       = module.frontdoor.urls
+}

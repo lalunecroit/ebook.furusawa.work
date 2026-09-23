@@ -190,3 +190,24 @@ module "migrate_job" {
   }
   secret_env = local.common_secret_env
 }
+
+# --------------------------------------------------------------- D段
+# インターネットからの入口。ここで約 2,900 円/月 が増える。
+# 証明書は DNS レコードが全部揃ってから発行されるので、apply 後に待ち時間がある。
+module "frontdoor" {
+  source = "../../modules/frontdoor"
+
+  project_id = var.project_id
+  region     = var.region
+  domain     = var.domain
+
+  # 手で作られた既存ゾーン。Terraform は参照するだけ (step08 の 5.1)
+  dns_zone_name = var.dns_zone_name
+
+  frontend_backend_bucket_id = module.frontend.backend_bucket_id
+  cdn_backend_bucket_id      = module.cdn.backend_bucket_id
+  docs_backend_bucket_id     = module.docs.backend_bucket_id
+
+  api_service_name   = module.api.name
+  admin_service_name = module.admin.name
+}
