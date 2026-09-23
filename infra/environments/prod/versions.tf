@@ -8,6 +8,12 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 7.9"
     }
+
+    # DB パスワードの生成に使う (modules/database)
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.7"
+    }
   }
 }
 

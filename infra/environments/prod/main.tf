@@ -10,3 +10,11 @@ module "registry" {
   project_id = var.project_id
   region     = var.region
 }
+
+# B段。ここから固定費が発生する (Step.07 の 7 章: 約 1,800 円/月)。
+module "database" {
+  source = "../../modules/database"
+
+  project_id = var.project_id
+  region     = var.region
+}
