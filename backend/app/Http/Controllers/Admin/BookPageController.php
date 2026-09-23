@@ -101,7 +101,7 @@ class BookPageController extends Controller
             'id' => $page->id,
             'page_no' => $page->page_no,
             'img_path' => $page->img_path,
-            'url' => config('cdn.base_url').$page->img_path.'?v='.$page->updated_at->getTimestamp(),
+            'url' => $page->url,
         ];
     }
 }
