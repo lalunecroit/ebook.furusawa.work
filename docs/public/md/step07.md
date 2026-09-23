@@ -679,11 +679,20 @@ terraform output name_servers
 
 インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
 
+<!--
+  1〜3 は対応済みのため表から削除した。
+  実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
+
+  | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
+  | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
+  | 3 | `composer install --no-dev --optimize-autoloader` をビルド時に | 起動のたびに composer が走る今の entrypoint は本番では不可 |
+
+  残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
+  番号で参照しているため、振り直すと対応が取れなくなる。
+-->
+
 | # | 変更 | 理由 |
 |---|---|---|
-| 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
-| 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
-| 3 | `composer install --no-dev --optimize-autoloader` をビルド時に | 起動のたびに composer が走る今の entrypoint は本番では不可 |
 | 4 | `DB_SOCKET` 対応の確認 | Laravel の `config/database.php` は `unix_socket` を既定で見る。TCP 用の `DB_HOST` は空にする |
 | 5 | `APP_KEY` を Secret Manager から | 起動のたびに生成すると暗号化済みデータが読めなくなる |
 | 6 | `CDN_BASE_URL=https://cdn.ebook.furusawa.work` | 画像の配り元。ホストが変わるだけで、組み立てロジックは Step.02 のまま |
