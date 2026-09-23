@@ -1,0 +1,18 @@
+# Terraform の作業ファイル。プロバイダのバイナリが入るので大きい
+.terraform/
+.terraform.tfstate.lock.info
+
+# state は GCS に置く。ローカルに残ったものはコミットしない
+# (bootstrap の初回 apply 時だけ一時的にここへ出る)
+*.tfstate
+*.tfstate.*
+
+# plan の出力
+*.tfplan
+
+crash.log
+crash.*.log
+
+# 機密を入れる場合はこちら。terraform.tfvars は機密を入れないのでコミットする
+*.auto.tfvars
+secrets.tfvars

@@ -143,5 +143,46 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ------------------------------------------------------------------ 本番 DB
+  # 本番の Cloud SQL を手元から覗くときだけ起動する。
+  #   docker compose --profile prod-db up -d   → http://localhost:8084
+  #
+  # Cloud SQL は IP 許可リストを空にしてあるため、素の mysql では繋がらない。
+  # 接続できるのは Cloud SQL Auth Proxy 経由だけで、利用には IAM の
+  # roles/cloudsql.client が要る (認証をネットワーク層ではなく IAM に寄せている)。
+  cloudsql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+    profiles: ["prod-db"]
+    command:
+      - "my-project-book-509215:asia-northeast1:ebook-db"
+      # 既定は 127.0.0.1 で、コンテナ内からしか繋げない。
+      # phpmyadmin-prod から届くようにする
+      - "--address=0.0.0.0"
+    volumes:
+      # ホストの ADC を読み取り専用で渡す。認証は自分の Google アカウント
+      - ~/.config/gcloud/application_default_credentials.json:/adc.json:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /adc.json
+    restart: unless-stopped
+
+  # 本番 DB 用の phpMyAdmin。開発用 (:8083) とは別に立てる。
+  phpmyadmin-prod:
+    image: phpmyadmin:5.2
+    profiles: ["prod-db"]
+    ports:
+      # 開発用と見分けがつくようにポートをずらす
+      - "8084:80"
+    environment:
+      PMA_HOST: cloudsql-proxy
+      PMA_PORT: "3306"
+      UPLOAD_LIMIT: 64M
+      # PMA_USER / PMA_PASSWORD は意図的に置かない。
+      # 自動ログインにすると「開発のつもりで本番を消す」事故が起きる。
+      # パスワードを取りに行く一手間が、そのまま確認の手順になる:
+      #   gcloud secrets versions access latest --secret=ebook-db-password
+    depends_on:
+      - cloudsql-proxy
+    restart: unless-stopped
+
 volumes:
   db-data:
