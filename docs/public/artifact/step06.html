@@ -399,6 +399,7 @@
 
   <nav class="toc" aria-label="目次">
     <ol>
+      <li><a href="#s0">構成</a></li>
       <li><a href="#s1">管理画面の入口</a></li>
       <li><a href="#s2">書誌情報の登録・編集</a></li>
       <li><a href="#s3">画像がまだ無い書籍</a></li>
@@ -411,6 +412,56 @@
       <li><a href="#s10">ハマりどころと積み残し</a></li>
     </ol>
   </nav>
+
+  <!-- ================================================== 0 -->
+  <section id="s0">
+    <h2 data-sec="§00">構成</h2>
+    <p class="lede">Step.03 の時点では6コンテナ。Step.04 で API を php-fpm + nginx に分け、Step.05 で CLI ツール用のコンテナを足したので、現在はこの形。</p>
+
+<div class="flow">
+      <div class="flow__box"><b>読者</b><span>ブラウザ</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>frontend :8080</b><span>nginx。一覧 + ビューア</span></div>
+    </div>
+    <div class="flow">
+      <div class="flow__box"><b>読者 / 管理者</b><span>fetch · 画面</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>backend-web :8000</b><span>nginx。/api/* と /admin/*</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>backend</b><span>php-fpm + GD (Laravel 13)</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>db :3306</b><span>MySQL 8.4</span></div>
+    </div>
+    <div class="flow">
+      <div class="flow__box"><b>読者</b><span>&lt;img&gt;</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>cdn :8082</b><span>nginx。ページ画像</span></div>
+      <div class="flow__arrow">◀</div>
+      <div class="flow__box"><b>backend / tools</b><span>cdn/public/ へ書き込む</span></div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>サービス</th><th>ポート</th><th>中身</th><th>役割</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>frontend</code></td><td>8080</td><td>nginx</td><td>書籍一覧 (<code>index.html</code>) とビューア (<code>reader.html</code>)</td></tr>
+          <tr><td><code>backend-web</code></td><td>8000</td><td>nginx</td><td>HTTP の受け口。静的ファイルを返し、PHP は php-fpm へ渡す</td></tr>
+          <tr><td><code>backend</code></td><td>9000 (内部)</td><td>php-fpm + GD</td><td>公開 API と<strong>管理画面</strong>。Laravel 本体</td></tr>
+          <tr><td><code>cdn</code></td><td>8082</td><td>nginx</td><td>ページ画像。<strong>管理画面からの書き込み先でもある</strong></td></tr>
+          <tr><td><code>db</code></td><td>3306</td><td>MySQL 8.4</td><td>書誌情報</td></tr>
+          <tr><td><code>phpmyadmin</code></td><td>8083</td><td>phpMyAdmin</td><td>DB 管理画面</td></tr>
+          <tr><td><code>docs</code></td><td>8081</td><td>nginx</td><td>このドキュメント</td></tr>
+          <tr><td><code>tools</code></td><td>—</td><td>php-cli + GD</td><td>サンプル画像の生成。<code>profiles</code> で通常の <code>up</code> からは外している</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>このステップで増えたコンテナは無い。変わったのは <strong><code>backend</code> の役割</strong>で、これまで「公開 API を返すだけ」だったところに <code>/admin/*</code> が加わり、<strong><code>cdn</code> への書き込み</strong>も行うようになった (<code>cdn/public/</code> を両方のコンテナにマウントしている)。</p>
+
+    <p>読者と管理者が同じ <code>:8000</code> を共有している点は、本番でサブドメインを分ける段階 (<code>api.</code> / <code>admin.</code>) で見直す予定。</p>
+  </section>
 
   <!-- ================================================== 1 -->
   <section id="s1">

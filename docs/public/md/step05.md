@@ -11,6 +11,60 @@ Step.04 まではサンプル書籍 1 冊（`sample`）だけで動作確認を�
 | 3 | backend: 書籍一覧APIの作成 | `GET /api/books`。ページング・公開判定・表紙 |
 | 4 | frontend: 書籍一覧ページ＆遷移作成 | `index.html` を一覧に、`reader.html` へ分離、終端の確認モーダル |
 
+## 構成
+
+コンテナは 7 つから 8 つになりました。増えたのは `tools` で、**リクエストを受けずに CLI から単発で回す処理**を置く場所です。
+
+```
+                 ┌──────────────────────────┐
+ブラウザ ────────▶│ frontend  :8080  (nginx) │  一覧 + ビューア
+    │            └──────────────────────────┘
+    │            ┌──────────────────────────┐   ┌──────────────────┐
+    ├─ fetch ───▶│ backend-web :8000 (nginx)│──▶│ backend (php-fpm)│
+    │            └──────────────────────────┘   └──────────────────┘
+    │            ┌──────────────────────────┐            │
+    └─ <img> ───▶│ cdn       :8082  (nginx) │            ▼
+                 └──────────────────────────┘   ┌──────────────────┐
+                             ▲                  │ db  :3306 (MySQL)│
+                 ┌───────────┴──────────────┐   └──────────────────┘
+                 │ tools      (php-cli, GD) │            ▲
+                 └──────────────────────────┘   ┌──────────────────┐
+                 ┌──────────────────────────┐   │ phpmyadmin :8083 │
+                 │ docs      :8081  (nginx) │   └──────────────────┘
+                 └──────────────────────────┘
+```
+
+| サービス | ポート | イメージ | 役割 |
+|---|---|---|---|
+| `tools` | — | `php:8.4-cli-alpine` + GD | サンプルページ画像の生成。`cdn/public/` へ書き出す |
+
+`tools` だけ矢印の向きが違います。他のコンテナがリクエストに応えるのに対し、**`tools` は `cdn` の中身を作る側**で、ブラウザからは一切触られません。そのため `profiles` で通常の `up` から外し、必要なときだけ `run` で起動します（詳細は次節）。
+
+GD を入れてあるのは、今のところ SVG を書き出すだけで使っていませんが、リサイズやサムネイル生成をここに足す想定だからです。
+
+## 変更ファイル
+
+| パス | 役割 |
+|---|---|
+| `compose.yaml` | `tools` サービスを追加（`profiles: ["tools"]`） |
+| `tools/Dockerfile` | `php:8.4-cli-alpine` + GD |
+| `tools/bin/generate-sample-pages.php` | サンプル画像の生成。Python 版からの移植 |
+| `tools/generate_dummy_pages.py` | **削除**（PHP 版に置き換え） |
+| `backend/database/seeders/data/sample-books.json` | 10 冊分の書誌カタログ。画像生成と Seeder で共用 |
+| `backend/database/seeders/BookSeeder.php` | カタログを読んで 10 冊 × 10 ページを投入 |
+| `backend/routes/api.php` | `GET /api/books` を追加 |
+| `backend/app/Http/Controllers/Api/BookController.php` | `index()` の追加。ページングと公開判定 |
+| `backend/app/Http/Resources/BookListResource.php` | 一覧用。本文ページを含めず表紙だけ返す |
+| `backend/app/Models/Book.php` | `cover()` リレーションと `scopePublished()` |
+| `backend/tests/Feature/Api/BookIndexTest.php` | 一覧 API のテスト 7 本 |
+| `frontend/public/index.html` | ビューアから**書籍一覧ページ**へ役割を変更 |
+| `frontend/public/reader.html` | ビューア本体（旧 `index.html`） |
+| `frontend/public/js/library.js` | 一覧の取得・カード描画・ページ送り |
+| `frontend/public/css/library.css` | 一覧のスタイル |
+| `frontend/public/js/reader.js` | `?book=` で開く本を決定。終端マークと確認モーダル |
+| `frontend/public/css/style.css` | 戻るリンクと終端モーダルのスタイル |
+| `cdn/public/books/<code>/page-01..10.svg` | 追加 9 冊分・90 枚のページ画像 |
+
 ## 1. サンプル生成を PHP に移植し、tools コンテナへ
 
 これまで `tools/generate_dummy_pages.py`（Python）でページ画像を作っていました。バックエンドが PHP なので、**言語を揃えて `tools/bin/generate-sample-pages.php` に書き直し**、専用の `tools` コンテナから実行できるようにしました。
