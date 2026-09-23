@@ -128,13 +128,190 @@ push も deploy も成功したように見えたうえで、**起動時に `exe
 **タグは `v1` で進めます。** 5 章の未決事項に挙げた「`v1` 固定かコミットハッシュか」は、
 CI を入れる段階で決めれば足ります。それまで手で push するので `v1` の上書きで困りません。
 
+### 3.2 ④ は B / C / D に分けて流す
+
+④「残り全部」を一度に書くと plan が大きくなって読めません。
+**課金が始まる地点**と**待ち時間が出る地点**で区切ります。
+
+| 段 | モジュール | 作るもの | 月額 | 所要 |
+|---|---|---|---|---|
+| **B** | `database` | Cloud SQL / DB / ユーザ / Secret ×2 | 約 1,800 円 | 10〜15 分 |
+| **C** | `api_service` ×2 | Cloud Run（api / admin）+ SA + IAM | min=1 のぶん課金 | 数分 |
+| **D** | `static_site` ×3 + `frontdoor` | GCS 3 本 + LB + 証明書 + DNS | 約 2,900 円 | **15〜60 分** |
+
+D の所要時間はマネージド証明書のプロビジョニング待ちです。
+**DNS レコードが全部揃ってからでないと `ACTIVE` になりません**（Step.07 の 8 章）。
+ここだけ独立させておくと、待っている間に他を触らずに済みます。
+
+段ごとに `-target` で区切ります。
+
+```bash
+cd infra/environments/prod
+terraform apply -target=module.database   # B
+terraform apply -target=module.api -target=module.admin   # C
+terraform apply                                            # D（残り全部）
+```
+
+> `-target` は本来デバッグ用の機能で、常用するものではありません。
+> ここでは**課金の開始地点を自分で選ぶ**ために使っています。
+> 全部書き終えたあとの通常運用では、素の `terraform apply` だけを使います。
+
+---
+
+### 3.3 B 段の手順
+
+```bash
+cd infra/environments/prod
+
+# 1. 何ができるか読む
+terraform plan
+#   → Plan: 7 to add, 0 to change, 0 to destroy.
+
+# 2. 作る（Cloud SQL の作成に 10〜15 分かかる）
+terraform apply -target=module.database
+
+# 3. -target を外して流し直す
+#    -target を使うと出力値が state に書かれないまま残る。
+#    実リソースは変わらず、output だけが保存される
+terraform apply
+
+# 4. 出力を確認
+terraform output
+#   db_connection_name    = "my-project-book-509215:asia-northeast1:ebook-db"
+#   db_password_secret_id = "ebook-db-password"
+#   app_key_secret_id     = "ebook-app-key"
+
+# 5. APP_KEY を投入する（箱だけ作ってあるので値を入れる / 5.4）
+cd ../../..
+docker compose exec backend php artisan key:generate --show | \
+  gcloud secrets versions add ebook-app-key --data-file=-
+
+# 6. 入ったか確認（1 件あれば OK）
+gcloud secrets versions list ebook-app-key
+```
+
+> **5 を飛ばすと C 段で止まります。** `APP_KEY` は箱（Secret）だけ Terraform が作り、
+> 値は手で入れる約束になっています（5.4）。空のまま Cloud Run を作ると、
+> Step.07 で入れた起動時ガード（`docker/prod/entrypoint.sh`）が
+> **`APP_KEY` 未設定を検知してコンテナを起動させません**。
+> デプロイは成功したのにコンテナが上がらない、という分かりにくい形で出ます。
+
+最後に DB へ繋がることを確認します（4.1 の phpMyAdmin が手軽です）。
+**テーブルが 1 つも無いのが正しい状態**で、マイグレーションは C 段のあとに流します（4.2）。
+
+#### B 段の完了条件
+
+| | 確認方法 | 期待 |
+|---|---|---|
+| Cloud SQL | `gcloud sql instances list` | `ebook-db` が `RUNNABLE` |
+| DB とユーザ | 4.1 の phpMyAdmin で接続 | `ebooks` が見え、テーブルは 0 件 |
+| DB パスワード | `gcloud secrets versions list ebook-db-password` | 1 件 |
+| **`APP_KEY`** | `gcloud secrets versions list ebook-app-key` | **1 件**（0 件なら 5 を実行） |
+| Terraform | `terraform plan` | `No changes.` |
+
+#### B 段で踏んだエラー：`Invalid Tier (db-f1-micro) for (ENTERPRISE_PLUS) Edition`
+
+最初の apply はここで落ちました。
+
+```
+Error: Error, failed to create instance ebook-db: googleapi: Error 400:
+Invalid request: Invalid Tier (db-f1-micro) for (ENTERPRISE_PLUS) Edition.
+Use a predefined Tier like db-perf-optimized-N-* instead.
+```
+
+`edition` を書いていなかったため、**API が `MYSQL_8_4` を見てエディションを
+`ENTERPRISE_PLUS` に寄せた**のが原因です。共有コアの安いティアは ENTERPRISE 専用で、
+ENTERPRISE_PLUS の最小は `db-perf-optimized-N-2` です。
+
+| | RAM | エディション |
+|---|---|---|
+| `db-f1-micro` | 614 MiB | ENTERPRISE |
+| `db-g1-small` | 1.7 GiB | ENTERPRISE |
+| `db-perf-optimized-N-2` | **16 GiB** | ENTERPRISE_PLUS |
+
+**月額が一桁変わる**ので、`db-f1-micro` を使うには ENTERPRISE でなければなりません。
+そこで 2 つ直しました。
+
+```hcl
+database_version = "MYSQL_8_0"   # 8.4 だと ENTERPRISE_PLUS に寄る
+settings {
+  edition = "ENTERPRISE"          # 省略せず必ず書く
+  tier    = "db-f1-micro"
+}
+```
+
+**`edition` を省略しないことが教訓です。** 既定値が「バージョンに応じて変わる」タイプの引数は、
+書かないと環境によって結果が変わります。
+
+ローカルの compose は `mysql:8.4` のままなので**本番と 1 マイナーバージョンずれます**が、
+このアプリが使う機能に 8.0 と 8.4 の差はありません。揃えたい場合は compose を `mysql:8.0` にして
+`docker compose down -v` → `migrate --seed` で作り直せます（シーダーがあるので手間は小さい）。
+
+> **失敗しても中途半端なリソースは残りませんでした。** Secret 2 つと `random_password` は
+> 作成済みとして state に入り、Cloud SQL だけが未作成です。修正後の plan は
+> `3 to add` になり、**作成済みのものは作り直されません**。
+> これが「state がある」ことの効き目です。
+
 ---
 
 ## 4. Terraform 以外に必要なもの
 
 設計を読み直して見つかった、**コード以外の積み残し**です。
 
-### 4.1 マイグレーションの実行
+### 4.1 本番 DB の中身をどう見るか
+
+Cloud SQL にはパブリック IP を持たせますが、**IP 許可リスト（`authorized_networks`）は空**にします。
+そのため素の `mysql -h <IP>` では繋がりません。接続できるのは **Cloud SQL Auth Proxy 経由だけ**で、
+利用には IAM の `roles/cloudsql.client` が要ります。認証をネットワーク層ではなく IAM に寄せる形です。
+
+> **IP を消してはいけません。** Cloud Run の Unix ソケット接続は内部で同じプロキシが動いており、
+> 実際のデータ通信はインスタンスの IP に対して行われます。プライベート IP を使うには VPC と
+> Direct VPC egress が要るので、`ipv4_enabled = false` にすると **Cloud Run 自身が繋がらなくなります**。
+> しかも Cloud SQL の作成は成功するため、C 段まで気づけません。
+
+手元から見るときはプロキシでローカルポートに生やします。
+
+```bash
+brew install cloud-sql-proxy
+cloud-sql-proxy my-project-book-509215:asia-northeast1:ebook-db --port 3307
+```
+
+あとはローカルの MySQL と同じように扱えます。
+
+```bash
+gcloud secrets versions access latest --secret=ebook-db-password   # パスワード
+mysql -h 127.0.0.1 -P 3307 -u ebooks -p ebooks
+```
+
+GUI で見たいときは、**`compose.yaml` に本番用の phpMyAdmin を用意してあります**。
+
+```bash
+docker compose --profile prod-db up -d    # → http://localhost:8084
+```
+
+| | 開発用 | 本番用 |
+|---|---|---|
+| URL | `localhost:8083` | `localhost:8084` |
+| 接続先 | `db` コンテナ | Cloud SQL（`cloudsql-proxy` 経由） |
+| ログイン | 自動 | **毎回手入力** |
+| 起動 | `docker compose up -d` | `--profile prod-db` を付けたときだけ |
+
+**本番側だけ自動ログインを外してあります。** 見た目の似た phpMyAdmin が 2 つ並ぶので、
+「開発のつもりで本番の行を消す」事故が起こりえます。パスワードを取りに行く一手間が、
+そのまま「いま本番を触っている」という確認になります。
+
+なお **phpMyAdmin を本番に置く案は採りません**。Cloud Run と証明書ドメインと DNS が
+1 つずつ増えるうえ、5.3 で Cloud Armor を入れない方針にしたため
+**認証が DB のパスワード 1 枚だけ**になります。管理画面（`/admin/*`）をレート制限まで入れて
+守ったのに、その隣に DB を直接触れる口を無防備で開けることになり、一貫しません。
+
+`artisan` を本番 DB に向けて流す場合も同じ経路が使えます。
+
+```bash
+DB_HOST=127.0.0.1 DB_PORT=3307 php artisan migrate --force
+```
+
+### 4.2 マイグレーションの実行
 
 コンテナ起動時には流しません（Step.07 の 10）。Cloud Run Jobs を作るか、手で流します。
 
@@ -144,14 +321,19 @@ gcloud run jobs create ebook-migrate --image <IMAGE> \
 gcloud run jobs execute ebook-migrate
 ```
 
-### 4.2 管理者ユーザの作成
+### 4.3 管理者ユーザの作成
 
-`artisan admin:user` を本番 DB に対して実行する必要があります。4.1 と同じ経路で流せます。
+`artisan admin:user` を本番 DB に対して実行する必要があります。4.2 と同じ経路で流せます。
 
-### 4.3 Secret Manager への値の投入
+### 4.4 Secret Manager への値の投入
 
-`APP_KEY` と DB パスワードを入れます。**値を Terraform で作ると平文が tfstate に残る**ので、
-シークレットの「箱」だけ Terraform で管理し、値は `gcloud secrets versions add` で手投入する方が安全です。
+`APP_KEY` を手で投入します。箱（`google_secret_manager_secret`）は Terraform が作るので、
+値を入れるだけです。DB パスワードは Terraform が生成して投入するため、この作業は要りません（5.4）。
+
+```bash
+php artisan key:generate --show | \
+  gcloud secrets versions add ebook-app-key --data-file=-
+```
 
 ---
 
@@ -161,9 +343,7 @@ gcloud run jobs execute ebook-migrate
 
 | | 選択肢 | メモ |
 |---|---|---|
-| admin の保護 | Cloud Armor の IP 制限を入れるか | **入れない方針**。アプリ側の防御のみ（Step.07 の 15 / 16） |
-| `min-instances` | 0 のままか | 0 ならコールドスタート、1 以上なら常時課金 |
-| イメージのタグ | `v1` 固定か、コミットハッシュか | ロールバックのしやすさに効く |
+| イメージのタグ | `v1` 固定か、コミットハッシュか | ロールバックのしやすさに効く。CI を入れる段で決める |
 
 ### 5.1 ドメインまわりで必要な作業
 
@@ -211,6 +391,48 @@ resource "google_dns_record_set" "api" {
 
 **実施のタイミング。** A レコードの中身は LB のグローバル静的 IP なので、**IP を確保するまで書けません**。
 この作業は LB 一式を作る段でまとめて行い、レコードが揃ってから証明書が `ACTIVE` になるのを待ちます。
+
+### 5.2 `min-instances` は 1 で始める
+
+**`min_instance_count = 1`** にします。0 だとリクエストが無い間インスタンスが落ち、
+次のアクセスでコールドスタート（Laravel の起動と Cloud SQL への接続）が入るためです。
+
+ただし **1 にすると常時課金になります**。Step.07 の 7 章は `min-instances=0` を前提に
+「Cloud Run は無料枠に収まる」と書いているので、**その前提が崩れます**。
+まず 1 で動かして実際の請求額を見てから、0 に落とすか判断します。
+
+### 5.3 admin の保護に Cloud Armor は入れない
+
+`admin.` の前段に IP 許可リストや IAP は置かず、**アプリ側の防御だけで守ります**。
+根拠は Step.07 の 6 章で入れた次の 2 つです。
+
+- セッション認証（ログイン試行のレート制限つき）
+- `ADMIN_HOST` によるホスト限定。`api.` に `/admin/*` を投げても届かない
+
+固定 IP が確保できる環境になったら Cloud Armor を足せますが、LB があるので**後付けできます**。
+いま入れるとポリシー単位の固定費が増えるうえ、作業場所が変わるたびに許可リストの更新が要ります。
+
+### 5.4 シークレットは種類ごとに扱いを変える
+
+Step.07 の 4.4 は「Terraform で乱数を生成して Secret Manager に入れる」、
+このドキュメントの当初案は「箱だけ Terraform、値は手投入」としていましたが、
+**DB パスワードに後者は使えません。** `google_sql_user` を Terraform で作る以上、
+手投入した値を `data` で読み戻せば結局 state に載るからです。
+
+そこで**種類ごとに分けます**。
+
+| | Terraform が値を使うか | 扱い | state |
+|---|---|---|---|
+| DB パスワード | 使う（`google_sql_user`） | `random_password` で生成し Secret Manager へ | **残る** |
+| `APP_KEY` | 使わない（Cloud Run が参照するだけ） | 箱だけ作り、値は `gcloud secrets versions add` | 残らない |
+
+`APP_KEY` は Terraform 側に値を使う相手がいないので、箱だけ作れば本当に state に入りません。
+DB パスワードのほうは state に残りますが、**tfstate バケットは非公開・バージョニング・
+`public_access_prevention = enforced`** で固めてあり、Step.07 の 4.4 が挙げた前提を満たしています。
+
+より厳密にやるなら `password_wo`（書き込み専用引数）と `ephemeral` 変数の組み合わせで
+state から完全に外せます。provider 7.46 で使えることは確認済みですが、
+**apply のたびに値を渡す必要があり、渡し忘れと版ずれの事故が起きうる**ため今回は採りません。
 
 ---
 
