@@ -680,13 +680,14 @@ terraform output name_servers
 インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
 
 <!--
-  1〜8 は対応済みのため表から削除した。
+  1〜9 は対応済みのため表から削除した。
   1〜3 の実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
   4 の実装: .env.example と config/database.php のコメント。
   5 の実装: docker/prod/entrypoint.sh の APP_KEY チェック。
   6 の実装: docker/prod/entrypoint.sh の CDN_BASE_URL チェック。
   7 の実装: config/cors.php と tests/Feature/Api/CorsTest.php。
   8 の実装: compose.yaml と .env.example のコメント。
+  9 の実装: bootstrap/app.php の trustProxies と tests/Feature/TrustProxiesTest.php。
 
   | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
   | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
@@ -696,6 +697,7 @@ terraform output name_servers
   | 6 | `CDN_BASE_URL=https://cdn.ebook.furusawa.work` | 画像の配り元。ホストが変わるだけで、組み立てロジックは Step.02 のまま |
   | 7 | **CORS をオリジン指定で明示する** | `www.` から `api.` への `fetch` はクロスオリジン。下記参照 |
   | 8 | `APP_URL=https://api.ebook.furusawa.work` | 生成される絶対 URL の基点 |
+  | 9 | **`TrustProxies` を有効にする** | LB 配下では `X-Forwarded-Proto` を信頼しないと `url()` が `http://` を吐く |
 
   4 について: 実機で確認したところ、DB_SOCKET が空でなければ Laravel は
   host/port を見ずにソケットで接続するため、表にあった「TCP 用の DB_HOST は
@@ -733,13 +735,21 @@ terraform output name_servers
   ebook-admin の2サービスで使うので、APP_URL はサービスごとに変える必要がある
   (admin 側は https://admin.ebook.furusawa.work)。
 
+  9 について: 信頼するのは X-Forwarded-Proto と X-Forwarded-Port だけにした。
+  X-Forwarded-For を信頼するとクライアントが自分の IP を名乗れてしまい、
+  email|ip をキーにしているログインのレート制限 (LoginRequest::throttleKey) を
+  IP を変えるだけで回避できる。Google の LB は受け取った X-Forwarded-For の
+  右側に実 IP を足す形なので、左端を実 IP とみなす Symfony の既定とも噛み合わない。
+  信頼しなければ $request->ip() はプロキシの IP になるが、これは今までと同じ挙動。
+  X-Forwarded-Host も、Cloud Run も開発の nginx も元の Host をそのまま渡すので
+  信頼していない (信頼すると生成 URL のホストを外から差し替えられる)。
+
   残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
   番号で参照しているため、振り直すと対応が取れなくなる。
 -->
 
 | # | 変更 | 理由 |
 |---|---|---|
-| 9 | **`TrustProxies` を有効にする** | LB 配下では `X-Forwarded-Proto` を信頼しないと `url()` が `http://` を吐く |
 | 10 | マイグレーションをコンテナ起動時に走らせない | インスタンスが同時に複数立つと競合する。Cloud Run Jobs か手動実行に分離 |
 | 11 | `/api/health` の追加 | 監視と疎通確認用 |
 | 12 | フロントの `CONFIG.api.base` を `https://api.ebook.furusawa.work/api` に | Step.02 で `reader.js` に書いた API のベース URL |
