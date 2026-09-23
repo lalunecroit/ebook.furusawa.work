@@ -6,6 +6,15 @@ FROM php:8.4-fpm-alpine
 # pdo_mysql は DB 接続に必要
 RUN docker-php-ext-install pdo_mysql
 
+# GD (JPEG / PNG / WebP / TrueType)。管理画面からアップロードされた画像の
+# 検証とリサイズに使う。ビルド用のヘッダは仮想パッケージにまとめて後で消す。
+RUN apk add --no-cache libjpeg-turbo libpng libwebp freetype \
+    && apk add --no-cache --virtual .build-deps \
+        libjpeg-turbo-dev libpng-dev libwebp-dev freetype-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+    && docker-php-ext-install -j"$(nproc)" gd \
+    && apk del .build-deps
+
 # 起動時の composer install 用 (公式イメージから composer だけ取り込む)。
 # dist の展開に unzip、フォールバックの source 取得に git を使う
 RUN apk add --no-cache git unzip

@@ -550,12 +550,54 @@ function toggleFullscreen() {
 /** 起動に失敗したときの表示。ビューアは出せないので理由だけ残す */
 function showFatal(message) {
   el.spinner.hidden = true;
-  const box = document.createElement('p');
-  box.className = 'fatal';
-  box.textContent = message;
-  el.stage.append(box);
+  el.stage.append(buildNotice(message, 'fatal'));
   el.liveRegion.textContent = message;
   console.error('[reader]', message);
+}
+
+/**
+ * ページが1枚も登録されていない書籍を開いたときの表示。
+ *
+ * 書誌情報だけ先に登録して画像を後から入れる運用があるので、
+ * この状態自体は異常ではない。ただし何も出ないと「壊れている」ようにしか
+ * 見えないため、理由と戻り先を明示する。
+ */
+function showEmpty() {
+  el.spinner.hidden = true;
+  el.stage.append(buildNotice('この書籍にはまだページがありません。', 'notice'));
+  el.liveRegion.textContent = 'この書籍にはまだページがありません';
+
+  // 操作できるように見えると紛らわしいので、ナビとシークを止めておく
+  el.navLeft.disabled = true;
+  el.navRight.disabled = true;
+  el.seek.disabled = true;
+  el.seek.max = '0';
+  el.seek.value = '0';
+  el.pagerCurrent.textContent = '0';
+  el.pagerTotal.textContent = '0';
+}
+
+/**
+ * ステージ中央に出す案内。一覧へ戻るリンクを添える。
+ *
+ * @param {string} message
+ * @param {'fatal'|'notice'} kind  fatal = 取得失敗 / notice = 異常ではないが読めない
+ */
+function buildNotice(message, kind) {
+  const box = document.createElement('div');
+  box.className = `notice notice--${kind}`;
+
+  const text = document.createElement('p');
+  text.className = 'notice__text';
+  text.textContent = message;
+
+  const link = document.createElement('a');
+  link.className = 'notice__link';
+  link.href = 'index.html';
+  link.textContent = '← 書籍一覧へ戻る';
+
+  box.append(text, link);
+  return box;
 }
 
 async function init() {
@@ -576,6 +618,12 @@ async function init() {
     return;
   }
   el.spinner.hidden = true;
+
+  // ページが1枚も無い書籍。読む対象が無いので、ここで案内を出して終了する
+  if (CONFIG.totalPages === 0) {
+    showEmpty();
+    return;
+  }
 
   // しおりから復帰
   state.current = loadProgress();
