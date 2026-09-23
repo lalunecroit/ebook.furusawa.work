@@ -680,7 +680,7 @@ terraform output name_servers
 インフラだけ作っても今の `backend/` は本番で動きません。並行して必要になる作業です。
 
 <!--
-  1〜15 は対応済みのため表から削除した。
+  1〜16 は対応済みのため表から削除した。
   1〜3 の実装: backend/Dockerfile.prod と backend/docker/prod/ 一式。
   4 の実装: .env.example と config/database.php のコメント。
   5 の実装: docker/prod/entrypoint.sh の APP_KEY チェック。
@@ -694,6 +694,7 @@ terraform output name_servers
   13 の実装: .env / .env.example / compose.yaml の SESSION_DRIVER。
   14 の実装: config/filesystems.php と AppServiceProvider::registerGcsDriver()。
   15 の実装: config/session.php の secure 既定値と .env.example。
+  16 の実装: config/app.php の admin_host と bootstrap/app.php の Route::domain。
 
   | 1 | 本番用 Dockerfile（nginx + php-fpm、または FrankenPHP） | `artisan serve` はシングルプロセスの開発用サーバ。Step.02 の積み残し |
   | 2 | `$PORT` を listen | Cloud Run はポートを環境変数で渡す（既定 8080） |
@@ -710,6 +711,7 @@ terraform output name_servers
   | 13 | **`SESSION_DRIVER=database`** | Step.02.5 で file にしたセッションは Cloud Run では保たない。下記参照 |
   | 14 | **`cdn` ディスクを GCS に差し替える** | Step.06 の画像アップロード先。ローカルディスクは Cloud Run に無い |
   | 15 | `SESSION_SECURE_COOKIE=true` / `SESSION_DOMAIN=admin.ebook.furusawa.work` | Cookie を HTTPS と `admin.` に閉じる |
+  | 16 | `app.admin_host` の追加と `Route::domain()` | `api.` から `/admin/*` に届かせない（4.8） |
 
   4 について: 実機で確認したところ、DB_SOCKET が空でなければ Laravel は
   host/port を見ずにソケットで接続するため、表にあった「TCP 用の DB_HOST は
@@ -832,13 +834,23 @@ terraform output name_servers
   ログインのレート制限 (email 単位で効く。9 のとおり X-Forwarded-For を
   信頼していないので IP 成分はプロキシ固定)。
 
+  16 について: ADMIN_HOST が空なら制限しない作りにした。開発は api も admin も
+  localhost で兼ねているため、常に限定すると管理画面が開けなくなる。
+  本番イメージで実測:
+    ADMIN_HOST=admin.ebook.furusawa.work のとき
+      Host: admin.ebook.furusawa.work -> /admin/login 200 / /api/books 200
+      Host: api.ebook.furusawa.work   -> /admin/login 404 / /api/books 200
+      Host: www.ebook.furusawa.work   -> /admin/login 404 / /api/books 200
+    ADMIN_HOST 未設定のとき
+      どのホストでも /admin/login 200 (開発と同じ)
+  公開 API にはホスト制限をかけていない。www. から叩かれるため。
+
   残りの番号は振り直していない。コード内のコメントが「step07 の 5 / 10 / 17」と
   番号で参照しているため、振り直すと対応が取れなくなる。
 -->
 
 | # | 変更 | 理由 |
 |---|---|---|
-| 16 | `app.admin_host` の追加と `Route::domain()` | `api.` から `/admin/*` に届かせない（4.8） |
 | 17 | アップロードの上限を 32MiB 未満に揃える | Cloud Run のリクエストサイズ上限。超えると Laravel まで届かず LB が 413 を返す |
 
 ### 管理画面（`admin.`）で追加になること

@@ -15,10 +15,16 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function (): void {
             // 管理画面。/admin 配下・admin. 名前・web ミドルウェア (セッションと CSRF) で束ねる。
             // 認証 (auth / guest) はログイン画面を除外する必要があるので routes/admin.php 側で付ける。
-            Route::middleware('web')
-                ->prefix('admin')
-                ->name('admin.')
-                ->group(base_path('routes/admin.php'));
+            $admin = Route::middleware('web')->prefix('admin')->name('admin.');
+
+            // ホストを限定する。api. と admin. は同じイメージの別サービスなので、
+            // 限定しないと api.ebook.furusawa.work/admin/... でも管理画面に届く。
+            // 開発は api も admin も localhost で兼ねているため ADMIN_HOST を空にして無効化する。
+            if ($adminHost = config('app.admin_host')) {
+                $admin->domain($adminHost);
+            }
+
+            $admin->group(base_path('routes/admin.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
