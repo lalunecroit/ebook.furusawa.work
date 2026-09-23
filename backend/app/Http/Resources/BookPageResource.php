@@ -25,20 +25,7 @@ class BookPageResource extends JsonResource
             'page_no' => $this->page_no,
             'img_path' => $this->img_path,
             'updated_at' => $this->updated_at->toIso8601String(),
-            'url' => $this->url(),
+            'url' => $this->url,
         ];
-    }
-
-    /**
-     * 画像URLを組み立てる。
-     *
-     * CDN 側は 1年 + immutable でキャッシュさせているため、同じ URL のままでは
-     * 画像を差し替えてもブラウザが取りに来ない。そこで updated_at を ?v= に載せ、
-     * 更新されたページだけ URL が変わるようにしている。
-     * (API 自体は Cache-Control: no-cache なので、新しい ?v= は次のリロードで届く)
-     */
-    private function url(): string
-    {
-        return config('cdn.base_url').$this->img_path.'?v='.$this->updated_at->getTimestamp();
     }
 }

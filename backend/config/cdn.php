@@ -11,6 +11,10 @@ return [
     | ブラウザから直接叩かれるURLなので、コンテナ名ではなく
     | ブラウザから見えるホスト名を入れる (compose の環境変数で渡している)。
     |
+    | 既定値は開発用。本番でこれが使われると画像URLが localhost になり、
+    | API は 200 のままブラウザだけが画像を取得できない状態になるため、
+    | 本番用の entrypoint は CDN_BASE_URL 未設定なら起動を中止する。
+    |
     */
 
     'base_url' => rtrim(env('CDN_BASE_URL', 'http://localhost:8082'), '/'),

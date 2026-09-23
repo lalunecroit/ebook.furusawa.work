@@ -2,3 +2,6 @@
 node_modules/
 __pycache__/
 .vscode/
+# docs ビューアのファイル一覧。デプロイ時に生成するのでコミットしない
+# (ローカルは nginx の autoindex を使う)
+docs/public/index.json

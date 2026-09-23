@@ -39,17 +39,32 @@ return [
         ],
 
         /*
-         * ページ画像の置き場。ローカルでは cdn サービスが配信している
-         * cdn/public/ をそのままマウントしている。
-         * 本番 (GCS) へ移すときは driver を gcs に差し替える。
+         * ページ画像の置き場。
+         *
+         * 開発では cdn サービスが配信している cdn/public/ をそのままマウントする。
+         * 本番 (Cloud Run) にはローカルディスクが無い (書けてもインスタンスが
+         * 消えれば失われる) ので、CDN_DISK=gcs で GCS バケットに切り替える。
+         *
+         * 差し替わるのはこの定義だけで、Storage::disk('cdn') を呼んでいる
+         * コントローラ側は変更不要。
          */
-        'cdn' => [
-            'driver' => 'local',
-            'root' => env('CDN_ROOT', '/var/www/cdn'),
-            'throw' => true,
-            'visibility' => 'public',
-            'directory_visibility' => 'public',
-        ],
+        'cdn' => env('CDN_DISK') === 'gcs'
+            ? [
+                'driver' => 'gcs',
+                'bucket' => env('CDN_BUCKET'),
+                'project_id' => env('GOOGLE_CLOUD_PROJECT'),
+                // 開発でエミュレータに向けるとき用。本番では空のままにする
+                'endpoint' => env('CDN_GCS_ENDPOINT'),
+                'visibility' => 'public',
+                'throw' => true,
+            ]
+            : [
+                'driver' => 'local',
+                'root' => env('CDN_ROOT', '/var/www/cdn'),
+                'throw' => true,
+                'visibility' => 'public',
+                'directory_visibility' => 'public',
+            ],
 
         'public' => [
             'driver' => 'local',

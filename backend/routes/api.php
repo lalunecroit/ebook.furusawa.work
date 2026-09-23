@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BookController;
+use App\Http\Controllers\Api\HealthController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 | 認証は入れていない (auth を足す段階で middleware を付ける)。
 |
 */
+
+// 監視と疎通確認用。既定は DB に触らない浅い確認で、?deep=1 で DB まで見る。
+Route::get('/health', HealthController::class);
 
 Route::get('/books', [BookController::class, 'index']);
 Route::get('/books/{book}', [BookController::class, 'show']);

@@ -1,0 +1,81 @@
+# 本番用イメージ (Cloud Run)。
+#
+# Cloud Run は1コンテナしか起動できないため、nginx と php-fpm を supervisord で
+# 同居させる。開発用の Dockerfile とは前提が違う (あちらはソースを bind mount し、
+# 起動時に composer install する) ので、ファイルを分けている。
+#
+#   docker build -f Dockerfile.prod -t ebooks-api:prod .
+
+# --------------------------------------------------------------- vendor 用
+# 本番イメージに composer や git を残さないため、依存の解決だけ別ステージでやる。
+# ランタイムと同じ PHP を使う (composer の platform check がずれないように)。
+FROM php:8.4-fpm-alpine AS vendor
+
+RUN apk add --no-cache git unzip
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+
+WORKDIR /app
+
+# 依存定義だけ先に入れてレイヤキャッシュを効かせる。
+# package:discover はアプリのソースが要るので、ここでは scripts を走らせない。
+COPY composer.json composer.lock ./
+RUN composer install \
+        --no-dev \
+        --no-scripts \
+        --no-autoloader \
+        --prefer-dist \
+        --no-interaction \
+        --no-progress
+
+# .dockerignore で vendor/ を除外しているので、上で作った vendor は上書きされない
+COPY . .
+
+# classmap-authoritative にすると実行時のファイル探索が無くなる
+RUN composer dump-autoload --no-dev --optimize --classmap-authoritative --no-scripts
+
+# ---------------------------------------------------------------- ランタイム
+FROM php:8.4-fpm-alpine AS runtime
+
+# nginx: HTTP 終端 / supervisor: 2プロセスの管理 / gettext: entrypoint の envsubst
+RUN apk add --no-cache nginx supervisor gettext
+
+# pdo_mysql は Cloud SQL 接続に必要。opcache は本番で必須
+RUN docker-php-ext-install pdo_mysql opcache
+
+# GD (JPEG / PNG / WebP / TrueType)。管理画面の画像検証とリサイズに使う。
+# ビルド用のヘッダは仮想パッケージにまとめて後で消す (開発用 Dockerfile と同じ)
+RUN apk add --no-cache libjpeg-turbo libpng libwebp freetype \
+    && apk add --no-cache --virtual .build-deps \
+        libjpeg-turbo-dev libpng-dev libwebp-dev freetype-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+    && docker-php-ext-install -j"$(nproc)" gd \
+    && apk del .build-deps
+
+COPY docker/prod/php.ini            /usr/local/etc/php/conf.d/zz-prod.ini
+COPY docker/prod/php-fpm.conf       /usr/local/etc/php-fpm.d/zz-prod.conf
+COPY docker/prod/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY docker/prod/supervisord.conf   /etc/supervisord.conf
+COPY docker/prod/stop-supervisor.sh /usr/local/bin/stop-supervisor.sh
+COPY docker/prod/entrypoint.sh      /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/stop-supervisor.sh /usr/local/bin/entrypoint.sh
+
+WORKDIR /app
+
+# vendor ステージで composer install と dump-autoload を済ませたツリーをそのまま貰う
+COPY --from=vendor /app /app
+
+# dev 依存を除いた vendor に合わせてパッケージ検出をやり直し、
+# bootstrap/cache/packages.php を本番用に作る
+RUN php artisan package:discover --ansi
+
+# アプリが書き込むのは storage と bootstrap/cache だけ。php-fpm のワーカーは
+# www-data で動くので、この2つだけ所有者を渡す
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R ug+rwX storage bootstrap/cache
+
+# Cloud Run が $PORT で上書きしてくる。ローカルで動かすときの既定値
+ENV PORT=8080
+EXPOSE 8080
+
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]
