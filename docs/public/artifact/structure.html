@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ディレクトリ構成</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / structure</div>
+    <h1>ディレクトリ構成</h1>
+    <p class="tagline">リポジトリの中身をざっくり。<b>サービスごとにディレクトリを分け、公開するものは必ず <code>public/</code> の中</b>に置く、という規則で通している。</p>
+    <div class="meta">
+      <span><b>ルート</b> 6 ディレクトリ + compose.yaml</span>
+      <span><b>方針</b> 1 サービス 1 ディレクトリ</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s0">全体</a></li>
+      <li><a href="#s1">公開ディレクトリの規則</a></li>
+      <li><a href="#s2">backend</a></li>
+      <li><a href="#s3">frontend</a></li>
+      <li><a href="#s4">infra</a></li>
+      <li><a href="#s5">cdn / docs / tools</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 0 -->
+  <section id="s0">
+    <h2 data-sec="§00">全体</h2>
+    <p class="lede">ルート直下はサービス単位。compose.yaml がそれらを束ねる。</p>
+
+<pre>.
+├── compose.yaml        <span class="c">ローカル一式。8 サービス</span>
+├── README.md
+│
+├── frontend/           <span class="c">ビューアと書籍一覧（Vanilla JS）</span>
+├── backend/            <span class="c">API と管理画面（Laravel）</span>
+├── cdn/                <span class="c">ページ画像の置き場</span>
+├── docs/               <span class="c">このドキュメント</span>
+├── tools/              <span class="c">CLI で回す処理（サンプル画像の生成など）</span>
+└── infra/              <span class="c">Terraform。本番の GCP</span></pre>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>ディレクトリ</th><th>ローカルでの姿</th><th>本番での姿</th></tr></thead>
+        <tbody>
+          <tr><td><code>frontend/</code></td><td>nginx :8080</td><td>GCS + Cloud CDN</td></tr>
+          <tr><td><code>backend/</code></td><td>nginx :8000 + php-fpm</td><td>Cloud Run ×2</td></tr>
+          <tr><td><code>cdn/</code></td><td>nginx :8082</td><td>GCS + Cloud CDN</td></tr>
+          <tr><td><code>docs/</code></td><td>nginx :8081</td><td>GCS + Cloud CDN</td></tr>
+          <tr><td><code>tools/</code></td><td>php-cli（<code>profiles</code> で常駐しない）</td><td>—</td></tr>
+          <tr><td><code>infra/</code></td><td>—</td><td>Terraform のコードそのもの</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">公開ディレクトリの規則</h2>
+    <p class="lede"><b>Web から見えるのは <code>public/</code> の中だけ。</b>設定ファイルやビルド定義はその外に置く。</p>
+
+<pre>frontend/
+├── Dockerfile          <span class="c">← 公開されない</span>
+├── nginx.conf          <span class="c">← 公開されない</span>
+└── public/             <span class="c">← ここがドキュメントルート</span>
+    ├── index.html
+    ├── reader.html
+    ├── css/  js/  assets/</pre>
+
+    <p><code>cdn/</code> と <code>docs/</code> も同じ形。ディレクトリを見ただけで
+    「何が外から見えるか」が分かるので、<b>うっかり設定ファイルを配ってしまう事故が起きない</b>。</p>
+
+    <div class="note">
+      <span class="note__label">マウントは public/ を 1 つだけ</span>
+      <p>compose では <code>./frontend/public</code> を丸ごと 1 つマウントしている。
+      サブディレクトリを個別にマウントすると Docker Desktop 側でマウントが外れ、
+      <b>コンテナ内が空に見えることがある</b>ため。</p>
+    </div>
+
+    <p>本番では、この <code>public/</code> の中身をそのまま GCS バケットへ流し込む。
+    ローカルと本番で<b>配るものが同じ</b>になり、「本番用に書き換え忘れる」事故が起きない。</p>
+
+<pre>gcloud storage rsync -r frontend/public/ gs://…-frontend/
+gcloud storage rsync -r cdn/public/      gs://…-cdn/
+gcloud storage rsync -r docs/public/     gs://…-docs/</pre>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">backend</h2>
+    <p class="lede">Laravel の標準構成に、本番用の Dockerfile と設定を足したもの。</p>
+
+<pre>backend/
+├── Dockerfile          <span class="c">開発用。ソースは bind mount、起動時に composer install</span>
+├── Dockerfile.prod     <span class="c">本番用。vendor を焼き込み、nginx + php-fpm を同居</span>
+├── docker/prod/        <span class="c">supervisord / nginx / php.ini / entrypoint</span>
+├── nginx.conf          <span class="c">開発用の前段 nginx</span>
+│
+├── app/
+│   ├── Http/Controllers/
+│   │   ├── Api/        <span class="c">公開 API（BookController / HealthController）</span>
+│   │   └── Admin/      <span class="c">管理画面（Book / BookPage / Auth）</span>
+│   ├── Http/Requests/  <span class="c">バリデーション。ログイン試行の制限もここ</span>
+│   ├── Http/Resources/ <span class="c">JSON の整形。一覧と詳細で分けてある</span>
+│   ├── Models/         <span class="c">Book / BookPage / User</span>
+│   └── Console/Commands/ <span class="c">admin:user（管理者の作成）</span>
+│
+├── routes/
+│   ├── api.php         <span class="c">/api/*</span>
+│   ├── web.php         <span class="c">/  （admin ホストなら管理画面へ飛ばす）</span>
+│   └── admin.php       <span class="c">/admin/*  web ミドルウェアで束ねる</span>
+│
+├── database/
+│   ├── migrations/     <span class="c">books / book_pages ほか</span>
+│   ├── factories/      <span class="c">テストデータ</span>
+│   └── seeders/data/sample-books.json  <span class="c">画像生成とシードで共用</span>
+│
+└── tests/Feature/      <span class="c">Api / Admin / TrustProxies</span></pre>
+
+    <div class="note">
+      <span class="note__label">ルートを 3 つに割った理由</span>
+      <p><code>api.php</code> と <code>admin.php</code> はミドルウェアが違う。
+      管理画面はセッションと CSRF（<code>web</code>）が要り、API は要らない。
+      <b>ファイルごと分けておくと混ざらない。</b></p>
+    </div>
+
+    <p><code>seeders/data/sample-books.json</code> は、<b>画像を作るスクリプトと DB シーダーの両方が読む</b>。
+    同じ書誌情報を 2 箇所に持つと、いずれ食い違うため。</p>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">frontend</h2>
+    <p class="lede">ビルドツールなし。置いたものがそのまま配られる。</p>
+
+<pre>frontend/public/
+├── index.html          <span class="c">書籍一覧</span>
+├── reader.html         <span class="c">ビューア（ページめくり）</span>
+├── css/
+│   ├── library.css     <span class="c">一覧</span>
+│   └── style.css       <span class="c">ビューア</span>
+├── js/
+│   ├── config.js       <span class="c">ホスト名から API の接続先を決める</span>
+│   ├── library.js      <span class="c">一覧の取得と描画</span>
+│   └── reader.js       <span class="c">めくりの状態管理</span>
+└── assets/
+    ├── no-image.svg    <span class="c">表紙が未登録のとき</span>
+    └── pages/          <span class="c">Step.01 当時のダミー。いまは cdn/ が本番</span></pre>
+
+    <div class="note">
+      <span class="note__label">環境ごとにファイルを差し替えない</span>
+      <p><code>config.js</code> は<b>開いているページのホスト名から</b>接続先を決める。
+      環境ごとにファイルを差し替える方式だと、本番用に書き換え忘れたときに
+      公開サイトが localhost を見に行き、しかもサーバ側は正常なので気づきにくい。
+      アップロードするファイルを環境で変えなければ、その事故自体が起きない。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">infra</h2>
+    <p class="lede">部品（modules）と、それを組み合わせる環境（environments）に分けてある。</p>
+
+<pre>infra/
+├── bootstrap/          <span class="c">tfstate バケットと API 有効化。単独で apply</span>
+│   └── backend.tf      <span class="c">初回 apply の後に書いて migrate-state</span>
+│
+├── modules/            <span class="c">プロジェクト固有の値を持たない部品</span>
+│   ├── registry/       <span class="c">Artifact Registry</span>
+│   ├── database/       <span class="c">Cloud SQL + Secret</span>
+│   ├── static_site/    <span class="c">GCS + backend bucket + Cloud CDN</span>
+│   ├── api_service/    <span class="c">Cloud Run + SA + IAM（api / admin で 2 回呼ぶ）</span>
+│   ├── job/            <span class="c">Cloud Run Jobs</span>
+│   └── frontdoor/      <span class="c">LB + URL マップ + 証明書 + DNS</span>
+│
+└── environments/
+    └── prod/           <span class="c">modules を組み合わせる。tfvars もここ</span></pre>
+
+    <p><b>いまは prod の 1 環境だけだが、最初から <code>environments/prod/</code> に切ってある。</b>
+    後から dev を足すときにディレクトリを掘り直す作業が発生しない。コストはディレクトリ 1 段だけ。</p>
+
+    <p><code>bootstrap/</code> を分けているのは鶏卵問題のため。state は GCS に置きたいが、
+    そのバケットを Terraform で作るなら、その apply の state はどこに置くのか。
+    <b>bootstrap だけローカル state で apply し、あとから backend.tf を書いて移す。</b></p>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">cdn / docs / tools</h2>
+
+<pre>cdn/
+├── nginx.conf          <span class="c">画像専用。圧縮と長期キャッシュ</span>
+└── public/books/&lt;code&gt;/page-01.svg …   <span class="c">10 冊 × 10 ページ</span>
+
+docs/
+├── nginx.conf
+└── public/
+    ├── index.html      <span class="c">このビューア</span>
+    ├── md/             <span class="c">step01〜08</span>
+    └── artifact/       <span class="c">step01〜08 + overview / structure</span>
+
+tools/
+├── Dockerfile          <span class="c">php-cli + GD</span>
+└── bin/
+    ├── generate-sample-pages.php  <span class="c">サンプル画像の生成</span>
+    └── generate-docs-index.php    <span class="c">docs の一覧（本番用）</span></pre>
+
+    <div class="note">
+      <span class="note__label">tools は常駐しない</span>
+      <p>リクエストを受けるのではなく、CLI から単発で回す処理。
+      compose では <code>profiles</code> で通常の <code>up</code> から外し、
+      <code>docker compose run --rm tools</code> で都度起動する。</p>
+    </div>
+
+    <p><code>docs/public/index.json</code> はリポジトリに含めていない。
+    ローカルは nginx の <code>autoindex</code> でファイル一覧を組み立てるが、GCS には autoindex が無い。
+    <b>デプロイの直前にだけ生成してアップロードする。</b>
+    コミットしてしまうと、ローカルで古い一覧が優先されて新しいページが出なくなる。</p>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">ebook.furusawa.work — 1 サービス 1 ディレクトリ、公開するものは public/ の中</p>
+
+</div>
+</body>
+</html>
