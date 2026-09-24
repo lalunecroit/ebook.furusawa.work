@@ -20,6 +20,10 @@ locals {
     "dns.googleapis.com",                  # Cloud DNS
     "iam.googleapis.com",                  # サービスアカウント
     "cloudresourcemanager.googleapis.com", # プロジェクトへの IAM 付与
+
+    # GitHub Actions から鍵なしで入るため (Workload Identity Federation)
+    "sts.googleapis.com",            # GitHub の OIDC トークンを GCP のトークンに交換する
+    "iamcredentials.googleapis.com", # 交換したトークンでサービスアカウントになりすます
   ]
 }
 
