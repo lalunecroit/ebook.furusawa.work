@@ -1,0 +1,86 @@
+# 本番 (Cloud Run) 用の nginx。開発用の nginx.conf との違いは 3 つ:
+#   - listen が ${PORT} (entrypoint が envsubst で埋める)
+#   - fastcgi_pass が同一コンテナ内の 127.0.0.1:9000
+#   - ログをファイルではなくコンテナの標準出力/標準エラーへ
+# daemon off は supervisord 側のコマンドで渡すのでここには書かない (重複エラーになる)。
+
+user  nginx;
+worker_processes  auto;
+pid /tmp/nginx.pid;
+
+error_log  /dev/stderr  warn;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    # LB のヘルスチェックは数秒おきに来るので、アクセスログからは外す
+    # (Cloud Logging の量とコストに効く。エラーログには出る)。
+    #
+    # location 側に access_log off を書いても効かない。try_files で /index.php へ
+    # 内部リダイレクトされ、ログは最終的に処理した location ~ \.php$ の設定で出るため。
+    # $request_uri はクエリ込みなので ?deep=1 付きも同じく除外される。
+    map $request_uri $loggable {
+        ~^/api/health  0;
+        default        1;
+    }
+
+    access_log  /dev/stdout  combined  if=$loggable;
+
+    sendfile        on;
+    tcp_nopush      on;
+    keepalive_timeout  65;
+    server_tokens   off;
+    charset         utf-8;
+
+    # アップロードの上限。内側 (php.ini の post_max_size) より上に取る。
+    # Cloud Run の上限 32MiB を超えると Laravel まで届かず LB が 413 を返すので、
+    # そこも下回らせる。段の全体は docker/prod/php.ini のコメントを参照
+    client_max_body_size 16m;
+
+    # 書き込み先を /tmp に寄せる (実行ユーザを絞っても動くように)
+    client_body_temp_path /tmp/nginx-client-body;
+    proxy_temp_path       /tmp/nginx-proxy;
+    fastcgi_temp_path     /tmp/nginx-fastcgi;
+    uwsgi_temp_path       /tmp/nginx-uwsgi;
+    scgi_temp_path        /tmp/nginx-scgi;
+
+    # JSON API なのでレスポンスは圧縮が効く
+    gzip              on;
+    gzip_types        application/json application/javascript text/css text/plain;
+    gzip_min_length   512;
+    gzip_vary         on;
+
+    server {
+        listen       ${PORT};
+        server_name  _;
+
+        # 公開ディレクトリは Laravel の public/ だけ。
+        # app/ や .env はドキュメントルートの外にあるため配信されない。
+        root   /app/public;
+        index  index.php;
+
+        location / {
+            try_files $uri $uri/ /index.php?$query_string;
+        }
+
+        location ~ \.php$ {
+            # 開発用と違い、php-fpm は同じコンテナの中にいる
+            fastcgi_pass   127.0.0.1:9000;
+            fastcgi_index  index.php;
+            include        fastcgi_params;
+            fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            fastcgi_param  DOCUMENT_ROOT   $document_root;
+            fastcgi_read_timeout 60s;
+        }
+
+        # .env や .git などドットで始まるものは配信しない
+        location ~ /\.(?!well-known).* {
+            deny all;
+        }
+    }
+}

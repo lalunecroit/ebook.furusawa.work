@@ -47,5 +47,6 @@
         <server name="DB_DATABASE" value="ebooks_test" force="true"/>
         <server name="DB_USERNAME" value="ebooks" force="true"/>
         <server name="DB_PASSWORD" value="password" force="true"/>
+        <server name="SESSION_DRIVER" value="array" force="true"/>
     </php>
 </phpunit>

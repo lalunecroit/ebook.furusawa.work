@@ -227,7 +227,7 @@ const el = {
 /* -------------------------------------------------- ファイル一覧 */
 
 /** autoindex の HTML から、ディレクトリでないファイル名を拾う */
-async function listDir(dir) {
+async function listDirByAutoindex(dir) {
   const res = await fetch(dir, { cache: 'no-store' });
   if (!res.ok) throw new Error(`${dir} -> ${res.status}`);
   const html = await res.text();
@@ -236,6 +236,30 @@ async function listDir(dir) {
     .map((a) => a.getAttribute('href'))
     .filter((href) => href && !href.startsWith('../') && !href.endsWith('/'))
     .map(decodeURIComponent);
+}
+
+/**
+ * 事前生成されたファイル一覧。DIRS の数だけ取りに行かないよう1回で済ませる。
+ * ローカルには置いていないので、ここは毎回 null になる。
+ */
+let indexPromise = null;
+function loadIndex() {
+  indexPromise ??= fetch('index.json', { cache: 'no-store' })
+    .then((res) => (res.ok ? res.json() : null))
+    .catch(() => null);
+  return indexPromise;
+}
+
+/**
+ * index.json があればそれを使い、無ければ autoindex に落とす。
+ *
+ * autoindex が無い静的ホスティング (GCS など) では index.json を置く。
+ * ローカルは逆に index.json を置かないので autoindex が使われ、
+ * ファイルを足した瞬間にサイドバーへ出る。
+ */
+async function listDir(dir) {
+  const index = await loadIndex();
+  return index?.[dir] ?? listDirByAutoindex(dir);
 }
 
 async function buildNav() {

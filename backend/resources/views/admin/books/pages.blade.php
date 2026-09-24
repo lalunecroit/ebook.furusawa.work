@@ -25,7 +25,7 @@
     @foreach ($book->pages as $page)
       <li class="pagecard drop" data-page-no="{{ $page->page_no }}" data-page-id="{{ $page->id }}"
           tabindex="0" role="button" aria-label="{{ $page->page_no }} ページ目を差し替え">
-        <img class="pagecard__img" src="{{ config('cdn.base_url') . $page->img_path }}?v={{ $page->updated_at->getTimestamp() }}" alt="">
+        <img class="pagecard__img" src="{{ $page->url }}" alt="">
         <div class="pagecard__foot">
           <span class="num">{{ $page->page_no }}</span>
           <button type="button" class="pagecard__del" data-page-id="{{ $page->id }}" title="このページを削除">削除</button>

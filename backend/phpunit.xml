@@ -32,11 +32,14 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
-        <!-- compose の environment で APP_ENV / DB_* が入っているため上の <env> は効かない
+        <!-- compose の environment で APP_ENV / DB_* / SESSION_DRIVER が入っているため上の <env> は効かない
              (既存の環境変数は上書きされず、Laravel は $_SERVER を優先して読む)。
-             ここで $_SERVER ごと上書きして、テストが開発用 MySQL に繋がらないようにする -->
+             ここで $_SERVER ごと上書きして、テストが開発用 MySQL に繋がらないようにする。
+             セッションも database のままだと sessions テーブルを前提にしてしまい、
+             RefreshDatabase を使わないテストや DB をモックするテストが落ちる -->
         <server name="APP_ENV" value="testing" force="true"/>
         <server name="DB_CONNECTION" value="sqlite" force="true"/>
         <server name="DB_DATABASE" value=":memory:" force="true"/>
+        <server name="SESSION_DRIVER" value="array" force="true"/>
     </php>
 </phpunit>

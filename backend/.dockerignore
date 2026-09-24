@@ -1,9 +1,18 @@
-# vendor はホスト側を bind mount して使う
+# vendor は開発ではホスト側を bind mount して使う。
+# 本番ビルド (Dockerfile.prod) では vendor ステージが composer install で作るので、
+# どちらの用途でもビルドコンテキストには含めない。
 vendor/
 node_modules/
 .env
 .git/
 .dockerignore
 Dockerfile
+Dockerfile.prod
 storage/logs/*
 tests/
+
+# 開発中に生成される検出キャッシュ。dev 依存 (laravel/pail など) が載っているため、
+# --no-dev でビルドした本番イメージに持ち込むと起動時に
+# "Class Laravel\Pail\PailServiceProvider not found" で落ちる。
+# 本番用は Dockerfile.prod が package:discover で作り直す。
+bootstrap/cache/*.php

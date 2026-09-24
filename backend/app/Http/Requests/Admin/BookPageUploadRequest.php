@@ -12,7 +12,15 @@ class BookPageUploadRequest extends FormRequest
     /** 受け付ける拡張子。SVG は生成ツールが出す形式なので含めている */
     public const ALLOWED = ['jpg', 'jpeg', 'png', 'webp', 'svg'];
 
-    /** 1枚あたりの上限 (KB)。nginx 側の client_max_body_size とも揃える */
+    /**
+     * 1枚あたりの上限 (KB)。利用者に見えるのはこの値。
+     *
+     * 外側の層 (PHP の upload_max_filesize / post_max_size、nginx の
+     * client_max_body_size、Cloud Run の 32MiB) は、すべてこれより大きく
+     * しておく必要がある。外側で先に落ちると、下の image.max の日本語ではなく
+     * PHP や nginx の汎用エラーが出てしまう。
+     * 段の全体は docker/prod/php.ini のコメントにまとめてある。
+     */
     public const MAX_KB = 8192;
 
     /**
