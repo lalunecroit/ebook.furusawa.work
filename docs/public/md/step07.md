@@ -4,6 +4,31 @@
 **Step.06 で backend に入れた管理画面（`/admin/*`）と、このドキュメント（`docs/`）も本番に出します。**
 このドキュメントは **設計方針と、手を動かす順番** をまとめたものです。Terraform のコードはまだ書いていません。
 
+**このステップで実際に手を動かしたのは 2 つです。**
+1 章の準備（terraform の導入、GCP プロジェクト、ADC）と、6 章の「アプリ側に必要な変更」17 項目。
+Terraform を書く作業そのものは Step.08 に送ります。
+
+| # | コミット | 内容 |
+|---|---|---|
+| 1 | docs: 本番GCSに合わせて修正 | このドキュメントの初稿 |
+| 2 | backend: 本番用 Dockerfile を追加 | nginx + php-fpm を supervisord で同居（6 章 1/2/3） |
+| 3 | backend: DB_SOCKET (Cloud SQL) 対応を確認しドキュメント化 | コード変更不要。挙動を実測して記録（4） |
+| 4 | backend: APP_KEY 未設定なら本番コンテナを起動させない | 未設定でも起動してしまう穴を塞ぐ（5） |
+| 5 | backend: CDN_BASE_URL 未設定なら本番コンテナを起動させない | 既定値が localhost で静かに壊れる穴を塞ぐ（6） |
+| 6 | backend: 画像URLの組み立てを BookPage のアクセサに集約 | 3 箇所に散っていた同じ式をまとめる |
+| 7 | backend: CORS の許可オリジンを明示する | 既定の `allowed_origins => ['*']` を絞る（7） |
+| 8 | backend: APP_URL の位置づけを明確にして compose に明示 | リクエスト中は効かないことを実測（8） |
+| 9 | backend: TrustProxies を有効にする | 信頼するのは Proto と Port だけ（9） |
+| 10 | backend: マイグレーション用に entrypoint へ実行モードの分岐を入れる | Cloud Run Jobs から artisan を叩けるように（10） |
+| 11 | backend: /api/health を追加する | 浅い確認と `?deep=1` の 2 段（11） |
+| 12 | frontend: API のベースURLを config.js に集約する | ホスト名から接続先を決める（12） |
+| 13 | backend: セッションを DB に寄せて開発と本番を揃える | file だと別インスタンスでログインが切れる（13） |
+| 14 | backend: cdn ディスクを GCS に切り替えられるようにする | `CDN_DISK=gcs` で差し替え（14） |
+| 15 | backend: セッション Cookie を本番で Secure にしホスト限定にする | `SESSION_DOMAIN` は null の方が厳しい（15） |
+| 16 | backend: 管理画面を ADMIN_HOST のホストだけに限定する | `api.` から `/admin/*` に届かせない（16） |
+| 17 | backend: アップロード上限を4層そろえる | Laravel / PHP / nginx / Cloud Run（17） |
+| 18 | backend: テストのセッションドライバを array に固定する | |
+
 > コード断片は**骨子**です。provider のバージョン差で引数名が変わることがあるため、
 > 実際に書くときは `terraform validate` と provider ドキュメントで確認してください。
 
@@ -371,9 +396,10 @@ gcloud storage rsync -r cdn/public/      gs://ebook-cdn/      --cache-control="p
 gcloud storage rsync -r frontend/public/ gs://ebook-frontend/ --cache-control="public, max-age=300"
 gcloud storage rsync -r docs/public/     gs://ebook-docs/     --cache-control="public, max-age=300"
 
-# .md は既定で text/markdown になり「ソース」リンクがダウンロードになるので上書きする
-gcloud storage rsync -r docs/public/md/  gs://ebook-docs/md/  --content-type=text/plain \
-                                                              --cache-control="public, max-age=300"
+# .md は既定で text/markdown になり「ソース」リンクがダウンロードになる。
+# rsync は同期済みのファイルをスキップするので、あとから --content-type を付けた
+# rsync を流しても効かない。アップロード後に objects update で上書きする
+gcloud storage objects update "gs://ebook-docs/md/*.md" --content-type=text/plain
 ```
 
 ### 4.6 URL マップ 1 枚でホスト名を振り分ける
@@ -907,6 +933,12 @@ Cloud Run のファイルシステムは**書けてもインスタンスが消�
 **コントローラは 1 行も変わりません。** Step.06 で `Storage::disk('cdn')` に寄せてあるのは、まさにこの差し替えのためです。
 `league/flysystem-google-cloud-storage` を入れ、認証は Cloud Run の SA（4.8）がそのまま使われます。
 
+> **実装時の補足。** Laravel が同梱するドライバは local / s3 / ftp / sftp だけで `gcs` はありません。
+> パッケージを入れたうえで `Storage::extend('gcs', ...)` の登録が別途必要です。
+> また上のコードにある `'visibility' => 'public'` は、均一なバケットレベルのアクセス
+> （`allUsers:objectViewer` をバケットに付ける形）ではオブジェクト ACL が使えないため
+> そのままでは 400 になります。`UniformBucketLevelAccessVisibility` を渡して無効化します。
+
 **キャッシュバスターはそのまま効きます。** Step.06 の `touch()` で `updated_at` が進み、API が返す `?v=` が変わるので、
 Cloud CDN に古い画像が載っていても**新しい URL として取りに行きます**。手動のキャッシュ無効化は要りません。
 
@@ -1094,7 +1126,7 @@ LB もCloud SQL も**秒課金**です。フル構成を建てて 3 日触って
 - [ ] **`admin.` を無制限に公開しない**。Cloud Armor の IP 許可リストか IAP を前段に置く。置かないなら、Step.06 のログイン画面だけが防御になることを承知のうえで
 - [ ] **`Route::domain()` でホストを縛る**。同じイメージなので、`api.` に `/admin/login` を投げれば届いてしまう
 - [ ] **docs の `index.json` を生成してから rsync する**。忘れるとサイドバーが空のまま公開される。CI で「生成して差分が出たら落とす」のが確実
-- [ ] **docs の `.md` に `--content-type=text/plain` を付ける**。既定では「ソース」リンクがダウンロードになる
+- [ ] **docs の `.md` の Content-Type を `text/plain` に直す**。既定の `text/markdown` だと「ソース」リンクがダウンロードになる。rsync はスキップしたファイルのメタデータを触らないので、`gcloud storage objects update` で後から上書きする
 
 ---
 
@@ -1111,11 +1143,10 @@ LB もCloud SQL も**秒課金**です。フル構成を建てて 3 日触って
 
 ## 現時点の未確認事項
 
-- 上記コードは骨子であり、`terraform validate` を通していません（ローカルに terraform 未インストール）
+- 上記コードは骨子であり、`terraform validate` を通していません（terraform v1.16.3 は導入済み。コードを書き起こすのは Step.08）
 - コストは公式価格ページと Cloud Billing カタログ API から取得した Tokyo リージョンの実価格です（2026-09-21 時点 / 1 USD = 157.89 円）。無料枠の消費状況や為替で変動します
 - backend bucket の index.html 解決（8 章）は実機確認が必要です
 - Cloud Armor の価格は本書の価格表に含めていません（7 章）。ポリシー単位の固定費が掛かるため、入れる前に確認が要ります
-- GCS ディスク（6 章）は `league/flysystem-google-cloud-storage` を入れる前提で書いており、実際には導入していません
 - backend bucket（frontend / cdn / docs）に IAP を付けられるかは未確認です。アクセスを絞るなら Cloud Armor を前提にしてください
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

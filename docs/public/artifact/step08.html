@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Terraform 実装ノート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / infra</div>
+    <h1>土台から順に積む</h1>
+    <p class="tagline">設計と準備は Step.07 で終わっている。ここからは実際に Terraform を書いて GCP にリソースを作る。最初の関門は、state を置くバケットを作る apply の state をどこに置くか、という鶏卵問題。</p>
+    <div class="meta">
+      <span><b>対象</b> infra/</span>
+      <span><b>terraform</b> v1.16.3</span>
+      <span><b>状態</b> 着手前</span>
+    </div>
+  </header>
+
+  <div class="note note--warn">
+    <span class="note__label">このノートは着手前の計画</span>
+    <p>Terraform のコードはまだ 1 行も書いていない。ここに書いてあるのは<b>これから何を、どの順で書くか</b>と、着手前に決めておく必要がある項目。作業が進むにつれて記録に置き換わる。</p>
+  </div>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s0">Step.07 との境界</a></li>
+      <li><a href="#s1">準備の結果</a></li>
+      <li><a href="#s2">鶏卵問題の解き方</a></li>
+      <li><a href="#s3">書く順番</a></li>
+      <li><a href="#s4">Terraform 以外の積み残し</a></li>
+      <li><a href="#s5">決めていないこと</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 0 -->
+  <section id="s0">
+    <h2 data-sec="§00">Step.07 との境界</h2>
+    <p class="lede">Step.07 は「設計と準備」で閉じた。何が済んでいて、何がこれからかを最初に切り分けておく。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th></th><th>Step.07</th><th>Step.08</th></tr></thead>
+        <tbody>
+          <tr><td>設計</td><td>済み</td><td>参照するだけ</td></tr>
+          <tr><td>手作業の準備</td><td>済み</td><td>—</td></tr>
+          <tr><td>アプリ側 17 項目</td><td>済み</td><td>—</td></tr>
+          <tr><td>Terraform のコード</td><td>骨子のみ</td><td><b>書く</b></td></tr>
+          <tr><td>GCP 上のリソース</td><td>無し</td><td><b>作る</b></td></tr>
+          <tr><td>静的ファイル</td><td>無し</td><td><b>流し込む</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>設計の根拠（なぜサブドメインで分けるのか、なぜ admin を別サービスにするのか）は Step.07 側にある。ここでは繰り返さない。</p>
+  </section>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">準備の結果</h2>
+    <p class="lede">Terraform を動かすための土台は揃っている。</p>
+
+<pre>terraform        v1.16.3
+プロジェクト       my-project-book-509215
+課金             billingEnabled: true
+認証             ADC（quota project 設定済み）
+権限             roles/owner</pre>
+
+    <p>API の有効化状況も見ておいた。<b>bootstrap が使う 2 つが既に有効</b>なので、手で叩く必要はない。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>API</th><th>状態</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td><code>storage.googleapis.com</code></td><td><b>有効</b></td><td>tfstate バケットを作る</td></tr>
+          <tr><td><code>serviceusage.googleapis.com</code></td><td><b>有効</b></td><td>他の API を有効化する</td></tr>
+          <tr><td><code>dns.googleapis.com</code></td><td>有効</td><td>Cloud DNS</td></tr>
+          <tr><td>compute / run / sqladmin / secretmanager / artifactregistry / iam / cloudresourcemanager</td><td>未有効</td><td>Terraform で有効化</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="note__label">プロジェクト ID</span>
+      <p>Step.07 の本文は <code>ebook-furusawa-prod</code> という<b>例示</b>のまま残してある。実際は <code>my-project-book-509215</code> なので、<code>terraform.tfvars</code> にはこちらを入れる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">鶏卵問題の解き方</h2>
+    <p class="lede">state は GCS に置きたい。でもそのバケットを Terraform で作るなら、その apply の state はどこに置くのか。</p>
+
+    <div class="flow">
+      <div class="flow__box">bootstrap<br><span class="c">local state</span></div>
+      <div class="flow__arrow">→</div>
+      <div class="flow__box">GCS バケット<br>が出来る</div>
+      <div class="flow__arrow">→</div>
+      <div class="flow__box">backend.tf<br>を書く</div>
+      <div class="flow__arrow">→</div>
+      <div class="flow__box"><code>-migrate-state</code><br><span class="c">state が移る</span></div>
+    </div>
+
+    <p>bootstrap に入れるのは 2 つだけ。</p>
+
+    <ul>
+      <li><b>tfstate 用の GCS バケット</b> — <b>バージョニング必須</b>。state の破損や誤 apply からの復旧手段がこれしかない</li>
+      <li><b><code>google_project_service</code></b> — 上の表の「未有効」7 つ</li>
+    </ul>
+
+    <p>API 有効化を bootstrap 側に置くのには理由がある。<code>terraform apply</code> の直後は有効化が伝播しておらず、続けて作るリソースが <code>API has not been used…</code> で落ちることがある。先に bootstrap を流しておけば、この揺れを踏まない。</p>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">書く順番</h2>
+    <p class="lede">apply が 2 回に分かれる。イメージが存在しないと作れないリソースがあるため。</p>
+
+<pre><span class="c"># ① 土台（ローカル state → GCS へ移行）</span>
+cd infra/bootstrap
+terraform init &amp;&amp; terraform apply
+terraform init -migrate-state   <span class="c"># backend.tf を書いてから</span>
+
+<span class="c"># ② 本体（イメージが要るリソースの手前まで）</span>
+cd ../environments/prod
+terraform apply -target=module.registry
+
+<span class="c"># ③ イメージを push</span>
+<span class="c">cd ../../..</span>
+docker build --platform linux/amd64 \
+  -f backend/Dockerfile.prod \
+  -t asia-northeast1-docker.pkg.dev/my-project-book-509215/app/api:v1 \
+  ./backend
+docker push asia-northeast1-docker.pkg.dev/my-project-book-509215/app/api:v1
+
+<span class="c"># ④ 残り全部</span>
+terraform apply
+
+<span class="c"># ⑤ 静的ファイルを流し込む</span>
+<span class="c"># ⑥ ネームサーバをレジストラ側に設定</span></pre>
+
+    <p>ディレクトリは最初から <code>environments/prod/</code> に切る。いまは 1 環境だけだが、後から dev を足すときに掘り直す作業が発生しない。コストはディレクトリ 1 段だけ。</p>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">Terraform 以外の積み残し</h2>
+    <p class="lede">設計を読み直して見つかった、コード以外に必要なもの。</p>
+
+    <h3>マイグレーションと管理者ユーザ</h3>
+    <p>コンテナ起動時には流さない（Step.07 の 10）。Cloud Run Jobs か手動で流す。</p>
+
+<pre>gcloud run jobs create ebook-migrate --image &lt;IMAGE&gt; \
+  --command php --args artisan,migrate,--force
+gcloud run jobs execute ebook-migrate</pre>
+
+    <p><code>artisan admin:user</code> も同じ経路で流す。</p>
+
+    <h3>Secret Manager への値の投入</h3>
+    <div class="note note--warn">
+      <span class="note__label">値を Terraform で作ると tfstate に平文が残る</span>
+      <p>シークレットの「箱」だけ Terraform で管理し、値は <code>gcloud secrets versions add</code> で手投入する。tfstate バケットのアクセス権を絞るだけでは、state を読める全員に見えてしまう。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">決めていないこと</h2>
+    <p class="lede">着手前に決める必要がある項目。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>項目</th><th>選択肢</th><th>効いてくるところ</th></tr></thead>
+        <tbody>
+          <tr><td>admin の保護</td><td><b>Cloud Armor は入れない方針</b></td><td>アプリ側の防御のみで守る（Step.07 の 15 / 16）</td></tr>
+          <tr><td><code>min-instances</code></td><td>0 のままか</td><td>0 ならコールドスタート、1 以上なら常時課金</td></tr>
+          <tr><td>イメージのタグ</td><td><code>v1</code> 固定か、コミットハッシュか</td><td>ロールバックのしやすさ</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>ドメインまわりで必要な作業</h3>
+    <p><code>furusawa.work</code> は Cloud DNS 上にあり、そのゾーンは今回のプロジェクトに属している。レジストラ（お名前.com）の NS も <code>ns-cloud-a1〜a4.googledomains.com</code> を向いているため、<b>レジストラで行う作業は無い</b>。ゾーン <code>furusawa-work</code> の中身は NS と SOA だけで、<code>ebook.furusawa.work</code> は未設定。</p>
+
+    <p>このステップで行うのは <b><code>ebook.</code> 配下の A レコードを既存ゾーンに追加すること</b>だけ。専用ゾーンは作らない。親ゾーンが空なので隔離の利点が無く、委任を挟まない分だけ証明書の発行も速い。</p>
+
+<pre><span class="c">// 手で作られた既存ゾーンを、作らずに参照する（import は不要）</span>
+data "google_dns_managed_zone" "root" {
+  name = "furusawa-work"
+}
+
+resource "google_dns_record_set" "api" {
+  managed_zone = data.google_dns_managed_zone.root.name
+  name         = "api.ebook.${data.google_dns_managed_zone.root.dns_name}"
+  type         = "A"
+  ttl          = 300
+  rrdatas      = [google_compute_global_address.lb.address]
+}</pre>
+
+    <div class="note">
+      <span class="note__label">効いてくるところ</span>
+      <p>親ゾーンが Terraform の管理外であることは安全側に働く。<code>terraform destroy</code> してもゾーン自体は残り、ドメインが死なない。実施のタイミングは LB 一式と同じ段。A レコードの中身が LB の静的 IP なので、<b>IP を確保するまで書けない</b>。</p>
+    </div>
+
+    <div class="note">
+      <span class="note__label">次の一手</span>
+      <p><code>infra/environments/prod/</code> を書く。Artifact Registry だけを先に作って <code>-target</code> で止め、イメージを push してから残りを流す。</p>
+    </div>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">
+    ebook.furusawa.work — Step.08 / Terraform 実装<br>
+    Terraform v1.16.3 · GCP (Cloud Run / Cloud SQL / GCS / LB) · 着手前
+  </p>
+
+</div>
+</body>
+</html>
