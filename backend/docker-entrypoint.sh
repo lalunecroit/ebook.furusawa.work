@@ -20,4 +20,9 @@ if ! grep -q '^APP_KEY=.\+' .env; then
   php artisan key:generate --force
 fi
 
+# SESSION_DRIVER=database のため、sessions テーブルが無いと最初の 1 リクエストから 500 になる。
+# migrate は適用済みなら何もしないので毎回流す (開発用。本番は Cloud Run Jobs で単発実行)
+echo "[entrypoint] マイグレーションを実行します"
+php artisan migrate --force
+
 exec "$@"

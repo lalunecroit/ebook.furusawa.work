@@ -110,11 +110,11 @@ infra/
 docker compose up -d
 
 # 2. Laravel が表示されるのを確認
-#    初回は composer install が走るため数分かかります
+#    初回は composer install とマイグレーションが走るため数分かかります
 open http://localhost:8000
 
-# 3. マイグレーションとサンプルデータの投入
-docker compose exec backend php artisan migrate --seed
+# 3. サンプルデータの投入
+docker compose exec backend php artisan db:seed
 
 # 4. Unitテスト
 docker compose exec backend php artisan test
