@@ -67,6 +67,20 @@ class AdminHostTest extends TestCase
         }
     }
 
+    public function test_admin_ホストの素のルートは書籍一覧へ飛ばす(): void
+    {
+        $this->get('http://'.self::ADMIN_HOST.'/')
+            ->assertRedirect('/admin/books');
+    }
+
+    public function test_別のホストの素のルートは飛ばさない(): void
+    {
+        // www. や api. の / は従来どおり。管理画面の存在を匂わせない
+        foreach (['api.example.test', 'www.example.test'] as $host) {
+            $this->get("http://{$host}/")->assertOk();
+        }
+    }
+
     public function test_設定が空なら制限しない(): void
     {
         // 開発は api も admin も localhost で兼ねるので、空のときは従来どおり通す
@@ -74,5 +88,8 @@ class AdminHostTest extends TestCase
         $this->refreshApplication();
 
         $this->get('http://api.example.test/admin/login')->assertOk();
+
+        // / も飛ばさない (http://localhost:8000 で Laravel の起動確認ができる)
+        $this->get('http://api.example.test/')->assertOk();
     }
 }
