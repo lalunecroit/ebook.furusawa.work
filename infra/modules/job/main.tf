@@ -90,9 +90,13 @@ resource "google_cloud_run_v2_job" "this" {
     }
   }
 
-  # イメージの更新は CI の仕事。サービス側と同じ扱いにする
+  # イメージの更新は CD の仕事。サービス側と同じ扱いにする
   lifecycle {
-    ignore_changes = [template[0].template[0].containers[0].image]
+    ignore_changes = [
+      template[0].template[0].containers[0].image,
+      client,
+      client_version,
+    ]
   }
 
   depends_on = [
