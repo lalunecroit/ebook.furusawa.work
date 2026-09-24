@@ -25,7 +25,7 @@ class TrustProxiesTest extends TestCase
         ]));
     }
 
-    public function test_X_Forwarded_Proto_を信頼して_https_の_URL_を生成する(): void
+    public function test_x_forwarded_proto_を信頼して_https_の_url_を生成する(): void
     {
         $this->probeRoute();
 
@@ -43,7 +43,7 @@ class TrustProxiesTest extends TestCase
             ->assertJsonPath('scheme', 'http');
     }
 
-    public function test_X_Forwarded_Host_は信頼しない(): void
+    public function test_x_forwarded_host_は信頼しない(): void
     {
         // 信頼すると生成URLのホストを外から差し替えられる。
         // Cloud Run も開発の nginx も元の Host をそのまま渡すので不要。
@@ -55,7 +55,7 @@ class TrustProxiesTest extends TestCase
         $this->assertStringNotContainsString('evil.example', (string) $res->json('url'));
     }
 
-    public function test_X_Forwarded_For_は信頼しない(): void
+    public function test_x_forwarded_for_は信頼しない(): void
     {
         // 信頼するとクライアントが自分の IP を名乗れてしまい、
         // email|ip をキーにしているログインのレート制限を回避できる

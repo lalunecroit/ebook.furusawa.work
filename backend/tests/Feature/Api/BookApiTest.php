@@ -47,7 +47,7 @@ class BookApiTest extends TestCase
             ]);
     }
 
-    public function test_画像URLにCDNのベースURLとキャッシュバスターが付く(): void
+    public function test_画像urlにcdnのベースurlとキャッシュバスターが付く(): void
     {
         config(['cdn.base_url' => 'http://cdn.test']);
         $book = $this->makeBook();
