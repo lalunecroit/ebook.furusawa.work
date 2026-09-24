@@ -6,6 +6,7 @@
 |---|---|
 | <https://ebook.furusawa.work> | 電子書籍サイト。機能：`書籍一覧` `書籍閲覧(ビューワ)` |
 | <https://admin.ebook.furusawa.work> | 管理画面。機能：`書籍登録・編集` `ページ登録` |
+| <https://docs.ebook.furusawa.work> | ドキュメント |
 
 管理画面はテストアカウントを用意しています。
 
@@ -21,6 +22,10 @@ Docker Compose でローカル一式が立ち上がり、本番は Terraform で
 | バックエンド | PHP 8.4 / Laravel 13 |
 | データベース | MySQL |
 | インフラ | Docker Compose（ローカル） / Terraform + GCP（本番） |
+
+> [!NOTE]
+> - 学習教材のため、JS は未圧縮・未難読化
+> - CI/CD 周りの実装はこれから
 
 ---
 

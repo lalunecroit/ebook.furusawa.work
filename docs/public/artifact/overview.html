@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ebook.furusawa.work 全体像</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / overview</div>
+    <h1>電子書籍サービスの概要・構成</h1>
+    <p class="tagline">画像ベースの電子書籍サービスを、ビューアから本番インフラまで一通り作った記録。<br>このドキュメントは Step 別ではなく、<b>完成した全体の姿</b>をまとめたもの。</p>
+    <div class="meta">
+      <span><b>フロント</b> Vanilla JS / CSS（ビルドなし）</span>
+      <span><b>バック</b> PHP 8.4 / Laravel 13</span>
+      <span><b>DB</b> MySQL</span>
+      <span><b>インフラ</b> Docker Compose / Terraform + GCP</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s0">サービスの姿</a></li>
+      <li><a href="#s1">ホストから見た GCP リソース相関</a></li>
+      <li><a href="#s2">リクエストが通る道</a></li>
+      <li><a href="#s3">GCP リソース一覧</a></li>
+      <li><a href="#s4">ローカル環境</a></li>
+      <li><a href="#s5">設計で効いた判断</a></li>
+      <li><a href="#s6">Terraform の組み立て</a></li>
+      <li><a href="#s7">積み残し</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 0 -->
+  <section id="s0">
+    <h2 data-sec="§00">サービスの姿</h2>
+    <p class="lede">本を「読む」側と「登録する」側の 2 つを、別のサブドメインで提供している。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>URL</th><th>役割</th><th>機能</th></tr></thead>
+        <tbody>
+          <tr><td><code>ebook.furusawa.work</code></td><td>電子書籍サイト</td><td>書籍一覧、ビューア（ページめくり）</td></tr>
+          <tr><td><code>admin.ebook.furusawa.work</code></td><td>管理画面</td><td>書籍の登録・編集、ページ画像のアップロード</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>ビューアは <b>画像 2 枚だけを重ねて</b> ページをめくる。総ページ数が増えても DOM は増えない。
+    綴じ目を軸に <code>rotateY</code> させ、<code>backface-visibility: hidden</code> で 90 度を超えた紙が自動的に消えるので、
+    「いつ紙を隠すか」を JS で判定する必要がない。</p>
+
+    <p>管理画面は Blade で backend の中に閉じ込めた。フォーム送信・CSRF・バリデーションの差し戻しを
+    Laravel に任せられる。画像は 1 枚ずつドラッグ&amp;ドロップでアップロードする。</p>
+
+    <div class="note">
+      <span class="note__label">同じコード、違う顔</span>
+      <p><b>公開 API と管理画面は 1 つの Laravel アプリ</b>で、本番では同じコンテナイメージを
+      2 つの Cloud Run サービスとして動かしている。違うのは環境変数と <b>権限</b> だけ。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">ホストから見た GCP リソース相関</h2>
+    <p class="lede">6 つのホスト名は <b>すべて同じ IP・同じ LB・同じ証明書</b> を指す。
+    振り分けているのは URL マップの <code>host_rule</code> だけで、増えているのは DNS レコードと証明書のドメイン名に過ぎない。</p>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="0 0 900 620" role="img" aria-label="ホストから GCP リソースへの相関図">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <style>
+            .lbl  { font: 500 12px var(--mono, monospace); fill: var(--ink-2, #4a5563); }
+            .lbl-s{ font: 400 11px var(--mono, monospace); fill: var(--ink-3, #7b8797); }
+            .ttl  { font: 600 12px var(--mono, monospace); fill: var(--accent, #146b57); }
+            .sub  { font: 400 11px var(--sans, sans-serif); fill: var(--ink-2, #4a5563); }
+            .bx   { fill: var(--surface, #fff); stroke: var(--rule-2, #c7ced8); stroke-width: 1.2; }
+            .bx-a { fill: var(--accent-soft, #daeee7); stroke: var(--accent, #146b57); stroke-width: 1.4; }
+            .ln   { stroke: var(--rule-2, #c7ced8); fill: none; color: var(--rule-2, #c7ced8); stroke-width: 1.2; }
+            .ln-a { stroke: var(--accent, #146b57); fill: none; color: var(--accent, #146b57); stroke-width: 1.4; }
+          </style>
+
+          <!-- ホスト名 -->
+          <text class="lbl-s" x="12" y="26">Cloud DNS — furusawa.work ゾーンに A レコード 6 本</text>
+          <g class="lbl">
+            <text x="14" y="62">ebook</text>
+            <text x="14" y="92">www.ebook</text>
+            <text x="14" y="122">api.ebook</text>
+            <text x="14" y="152">admin.ebook</text>
+            <text x="14" y="182">cdn.ebook</text>
+            <text x="14" y="212">docs.ebook</text>
+          </g>
+          <g class="ln">
+            <path d="M126 58 H178 V130"/>
+            <path d="M126 88 H178"/>
+            <path d="M126 118 H178"/>
+            <path d="M126 148 H178"/>
+            <path d="M126 178 H178"/>
+            <path d="M126 208 H178 V130"/>
+          </g>
+          <path class="ln-a" d="M178 130 H236" marker-end="url(#ah)"/>
+          <text class="lbl-s" x="14" y="244">ebook は LB が www へ 301</text>
+
+          <!-- 静的 IP + LB -->
+          <rect class="bx-a" x="240" y="62" width="210" height="136" rx="5"/>
+          <text class="ttl" x="256" y="86">グローバル静的 IP ×1</text>
+          <text class="sub" x="256" y="108">外部 Application LB + Cloud CDN</text>
+          <text class="sub" x="256" y="128">マネージド証明書 1 枚 / 6 ドメイン</text>
+          <text class="sub" x="256" y="148">転送ルール 443 と 80</text>
+          <text class="sub" x="256" y="176">host_rule でホスト名を振り分け</text>
+
+          <!-- LB から 5 つの向き先へ -->
+          <g class="ln-a">
+            <path d="M450 130 H478 V85  H502" marker-end="url(#ah)"/>
+            <path d="M450 130 H478 V131 H502" marker-end="url(#ah)"/>
+            <path d="M450 130 H478 V177 H502" marker-end="url(#ah)"/>
+            <path d="M450 130 H478 V223 H502" marker-end="url(#ah)"/>
+            <path d="M450 130 H478 V269 H502" marker-end="url(#ah)"/>
+          </g>
+
+          <rect class="bx" x="505" y="66"  width="200" height="38" rx="4"/>
+          <text class="ttl" x="517" y="84">GCS frontend</text>
+          <text class="sub" x="517" y="99">www — HTML / CSS / JS</text>
+
+          <rect class="bx" x="505" y="112" width="200" height="38" rx="4"/>
+          <text class="ttl" x="517" y="130">Cloud Run  ebook-api</text>
+          <text class="sub" x="517" y="145">api — 公開 API /api/*</text>
+
+          <rect class="bx" x="505" y="158" width="200" height="38" rx="4"/>
+          <text class="ttl" x="517" y="176">Cloud Run  ebook-admin</text>
+          <text class="sub" x="517" y="191">admin — 管理画面 /admin/*</text>
+
+          <rect class="bx" x="505" y="204" width="200" height="38" rx="4"/>
+          <text class="ttl" x="517" y="222">GCS cdn</text>
+          <text class="sub" x="517" y="237">cdn — ページ画像</text>
+
+          <rect class="bx" x="505" y="250" width="200" height="38" rx="4"/>
+          <text class="ttl" x="517" y="268">GCS docs</text>
+          <text class="sub" x="517" y="283">docs — md / artifact</text>
+
+          <!-- admin だけが cdn に書ける -->
+          <path class="ln-a" d="M705 177 H745 V223 H709" marker-end="url(#ah)"/>
+          <text class="lbl-s" x="752" y="204">画像を書く</text>
+
+          <!-- api / admin から Cloud SQL -->
+          <path class="ln" d="M505 131 H476 V348" marker-end="url(#ah)"/>
+          <path class="ln" d="M505 177 H492 V348" marker-end="url(#ah)"/>
+          <rect class="bx" x="460" y="350" width="270" height="52" rx="4"/>
+          <text class="ttl" x="476" y="372">Cloud SQL (MySQL 8.0)</text>
+          <text class="sub" x="476" y="390">Unix socket 接続。VPC コネクタ不要</text>
+
+          <!-- 周辺リソース -->
+          <text class="lbl-s" x="14" y="344">アプリが使う周辺リソース</text>
+          <rect class="bx" x="12" y="350" width="230" height="52" rx="4"/>
+          <text class="ttl" x="28" y="372">Secret Manager</text>
+          <text class="sub" x="28" y="390">APP_KEY / DB パスワード（参照で渡す）</text>
+
+          <rect class="bx" x="12" y="422" width="230" height="52" rx="4"/>
+          <text class="ttl" x="28" y="444">Artifact Registry</text>
+          <text class="sub" x="28" y="462">api:v2 を 2 サービスで共有</text>
+
+          <rect class="bx" x="460" y="422" width="270" height="52" rx="4"/>
+          <text class="ttl" x="476" y="444">Cloud Run Jobs  ebook-migrate</text>
+          <text class="sub" x="476" y="462">migrate / seed を単発で流す</text>
+
+          <path class="ln" stroke-dasharray="3 3" d="M242 448 H460" marker-end="url(#ah)"/>
+          <path class="ln" stroke-dasharray="3 3" d="M595 422 V402" marker-end="url(#ah)"/>
+
+          <!-- IAM -->
+          <rect class="bx" x="12" y="500" width="718" height="98" rx="4"/>
+          <text class="ttl" x="28" y="524">サービスアカウントで権限を分ける</text>
+          <text class="sub" x="28" y="546">ebook-api    …  cloudsql.client  /  渡した Secret だけの accessor</text>
+          <text class="sub" x="28" y="566">ebook-admin  …  上記 + GCS cdn への storage.objectAdmin</text>
+          <text class="sub" x="28" y="586">公開 API は画像を書けない。踏み台にされても改ざんが届かない</text>
+        </svg>
+      </div>
+      <figcaption>6 ホスト → 1 つの LB → 5 つの向き先。データ層と権限はその下に付く</figcaption>
+    </figure>
+
+    <div class="note">
+      <span class="note__label">分けてもコストは増えない</span>
+      <p>サブドメインを 5 つに割っても、<b>IP も転送ルールも証明書も 1 つのまま</b>。
+      ホスト名の振り分けは URL マップの中で完結する。増えるのは DNS レコードだけで、これはゾーン料金に含まれる。</p>
+    </div>
+  </section>
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">リクエストが通る道</h2>
+    <p class="lede">ホストごとに、どのリソースを何段通るか。</p>
+
+    <h3>本を読む</h3>
+    <div class="flow">
+      <div class="flow__box"><b>ブラウザ</b><span>www.ebook…</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>LB + Cloud CDN</b><span>host_rule で www へ</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>GCS frontend</b><span>index.html / reader.html</span></div>
+    </div>
+    <div class="flow">
+      <div class="flow__box"><b>ブラウザ</b><span>fetch</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>ebook-api</b><span>Serverless NEG 経由</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>Cloud SQL</b><span>書誌情報と画像 URL</span></div>
+    </div>
+    <div class="flow">
+      <div class="flow__box"><b>ブラウザ</b><span>&lt;img src&gt;</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>GCS cdn</b><span>Cloud CDN がキャッシュ</span></div>
+    </div>
+    <p><b>画像は API を経由しない。</b>API が返すのは URL だけで、ブラウザはそれを
+    <code>&lt;img src&gt;</code> に入れて CDN から直接読む。PHP を画像の通り道にしないことで、
+    API は JSON を返すだけの軽い処理に保てる。</p>
+
+    <h3>本を登録する</h3>
+    <div class="flow">
+      <div class="flow__box"><b>管理者</b><span>admin.ebook…</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>ebook-admin</b><span>Blade + セッション認証</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>GCS cdn</b><span>画像を書き込む</span></div>
+    </div>
+    <p>アップロード後に <code>touch()</code> で <code>updated_at</code> を進める。API が返す URL の
+    <code>?v=</code> が変わるので、<b>Cloud CDN に古い画像が載っていても新しい URL として取りに行く</b>。
+    キャッシュの手動無効化が要らない。</p>
+
+    <div class="note">
+      <span class="note__label">ホストを跨がせない</span>
+      <p>api と admin は同じイメージなので、<code>api.ebook…/admin/login</code> にもルートは存在する。
+      <code>ADMIN_HOST</code> と <code>Route::domain()</code> でホストを縛り、<b>届かないようにしてある</b>。
+      LB の振り分けとアプリ側の 2 枚で塞いでいる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">GCP リソース一覧</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>リソース</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td>外部 Application LB</td><td>グローバル静的 IP 1 つ。転送ルールは 443 と 80（80 は 301）</td></tr>
+          <tr><td>マネージド証明書</td><td>6 ドメインを 1 枚に</td></tr>
+          <tr><td>Cloud CDN</td><td>GCS 3 バケットで有効</td></tr>
+          <tr><td>Cloud Run ×2</td><td><code>ebook-api</code> / <code>ebook-admin</code>。同じイメージ</td></tr>
+          <tr><td>Cloud SQL</td><td>MySQL 8.0 / <code>db-f1-micro</code>。IP 許可リストは空</td></tr>
+          <tr><td>Secret Manager</td><td><code>APP_KEY</code> と DB パスワード。値ではなく参照を渡す</td></tr>
+          <tr><td>Artifact Registry</td><td>コンテナイメージ。直近 10 世代を保持</td></tr>
+          <tr><td>Cloud Run Jobs</td><td><code>ebook-migrate</code>。起動時には流さない</td></tr>
+          <tr><td>Cloud DNS</td><td>既存ゾーンに A レコード 6 本</td></tr>
+          <tr><td>GCS ×4</td><td>frontend / cdn / docs / tfstate</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note note--warn">
+      <span class="note__label">Cloud SQL の IP</span>
+      <p>パブリック IP は<b>持たせている</b>。Cloud Run の Unix ソケット接続は内部で Cloud SQL Auth Proxy が動き、
+      実データは IP に対して流れるため、消すと Cloud Run 自身が繋がらなくなる（VPC が要る）。</p>
+      <p>危険なのは IP を持つことではなく <b>許可リストを開けること</b>。空にしてあるので、
+      パスワードを知っていても素の <code>mysql -h</code> は通らない。接続できるのはプロキシ経由だけで、
+      それには IAM の <code>cloudsql.client</code> が要る。<b>認証をネットワーク層ではなく IAM に寄せている。</b></p>
+    </div>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">ローカル環境</h2>
+    <p class="lede"><code>docker compose up -d</code> で 8 サービスが立ち上がる。本番との対応を保ったまま、置き換えられる部分だけ置き換えてある。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>ローカル</th><th>本番</th><th>差し替え方</th></tr></thead>
+        <tbody>
+          <tr><td><code>frontend</code> nginx :8080</td><td>GCS + Cloud CDN</td><td>静的ファイルを置くだけ</td></tr>
+          <tr><td><code>cdn</code> nginx :8082</td><td>GCS + Cloud CDN</td><td>同上</td></tr>
+          <tr><td><code>docs</code> nginx :8081</td><td>GCS + Cloud CDN</td><td>一覧だけ <code>index.json</code> に</td></tr>
+          <tr><td><code>backend-web</code> + <code>backend</code></td><td>Cloud Run ×2</td><td>本番は supervisord で 1 コンテナに同居</td></tr>
+          <tr><td><code>db</code> MySQL 8.4</td><td>Cloud SQL 8.0</td><td><code>DB_SOCKET</code> の有無だけ</td></tr>
+          <tr><td>バインドマウント</td><td>GCS バケット</td><td><code>CDN_DISK=gcs</code> でディスク定義を差し替え</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><b>画像の保存先はコントローラを 1 行も変えずに切り替わる。</b>
+    <code>Storage::disk('cdn')</code> に寄せてあるので、変わるのは <code>config/filesystems.php</code> の
+    ディスク定義だけ。</p>
+
+    <div class="note">
+      <span class="note__label">本番 DB を手元から覗く</span>
+      <p><code>docker compose --profile prod-db up -d</code> で Cloud SQL Auth Proxy と
+      本番用 phpMyAdmin（:8084）が立つ。<b>本番側だけ自動ログインを外してある</b>。
+      見た目の似た phpMyAdmin が 2 つ並ぶので、パスワードを取りに行く一手間を
+      「いま本番を触っている」という確認に使う。</p>
+    </div>
+  </section>
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">設計で効いた判断</h2>
+    <p class="lede">あとから効いてきたもの、踏んで学んだものを 6 つ。</p>
+
+    <div class="recipes">
+      <div class="recipe">
+        <h3>api と admin を分けた理由は権限</h3>
+        <p>処理の重さではない。管理画面は <code>cdn</code> バケットへ書き込むが、公開 API は読みすらしない
+        （画像はブラウザが CDN から直接読む）。同じサービスに載せると、公開 API 側の穴から
+        書き込み権限まで届く。<b>サービスを分ければ SA が別になり、公開 API に
+        <code>storage.objectAdmin</code> を一切与えずに済む。</b></p>
+      </div>
+
+      <div class="recipe">
+        <h3>論理削除と一意制約を両立させる生成列</h3>
+        <p>削除済みの本と同じ <code>code</code> を再登録したい。しかし現役の本は重複させたくない。
+        <b>NULL を含む行は unique の判定対象外になる</b>性質を使い、生成列を足した。</p>
+<pre><span class="c">-- deleted_at が NULL のときだけ 1、それ以外は NULL</span>
+is_active tinyint GENERATED ALWAYS AS
+  (<span class="k">case when</span> deleted_at <span class="k">is null then</span> 1 <span class="k">end</span>) STORED
+<span class="k">UNIQUE KEY</span> (code, is_active)</pre>
+        <p>MySQL 8.0 でも同じ DDL がそのまま通ることを実機で確認した。</p>
+      </div>
+
+      <div class="recipe">
+        <h3>キャッシュは長く持たせ、URL を変える</h3>
+        <p>ページ画像は <code>max-age=31536000, immutable</code> で配る。差し替えたら
+        <code>touch()</code> で <code>updated_at</code> を進め、API が返す <code>?v=</code> を変える。
+        <b>キャッシュを消しに行くのではなく、別の URL にする。</b></p>
+      </div>
+
+      <div class="recipe">
+        <h3>シークレットは種類ごとに扱いを変える</h3>
+        <p>Terraform の state は平文。<b>Terraform が値を使うかどうか</b>で分けた。</p>
+        <p><code>APP_KEY</code> は Cloud Run が参照するだけなので、<b>箱だけ作って値は手投入</b>。state に残らない。
+        DB パスワードは <code>google_sql_user</code> を作るのに必要なので生成まで任せ、代わりに
+        tfstate バケットを非公開・バージョニング・<code>public_access_prevention</code> で固めた。</p>
+      </div>
+
+      <div class="recipe">
+        <h3>段階を分けて apply する</h3>
+        <p>「課金が始まる地点」と「待ち時間が出る地点」で区切った。区切りは <code>-target</code> ではなく
+        <b>コードを書く順番</b>で作る。その段のモジュールを書いた時点で apply すれば、
+        まだ書いていないものは作られない。</p>
+<pre>A registry  <span class="c">→ イメージが要るリソースの手前</span>
+B database  <span class="c">→ 約 1,800 円/月 が発生</span>
+C GCS + Cloud Run
+D LB + 証明書 + DNS  <span class="c">→ 約 2,900 円/月、証明書待ち 15〜60 分</span></pre>
+      </div>
+
+      <div class="recipe">
+        <h3>本番で踏んだ落とし穴</h3>
+        <p><b>Apple Silicon で <code>--platform linux/amd64</code> を忘れる。</b>
+        push も deploy も成功したように見えて、起動時に <code>exec format error</code> で落ちる。</p>
+        <p><b><code>edition</code> を省略した。</b><code>MYSQL_8_4</code> を指定したら API が
+        <code>ENTERPRISE_PLUS</code> を選び、<code>db-f1-micro</code>（614 MiB）が弾かれた。
+        そちらの最小は 16 GiB で月額が一桁変わる。<b>既定値が他の引数に応じて変わる引数は省略しない。</b></p>
+        <p><b>本番イメージに Faker が無い。</b><code>db:seed</code> が
+        <code>Call to undefined function fake()</code> で落ちた。dev 依存なので <code>--no-dev</code> では入らない。
+        そもそも雛形の Test User を本番に作るべきではないので、環境で囲った。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== 6 -->
+  <section id="s6">
+    <h2 data-sec="§06">Terraform の組み立て</h2>
+
+<pre>infra/
+├── bootstrap/            <span class="c">tfstate バケットと API 有効化。単独で apply</span>
+├── modules/
+│   ├── registry/         <span class="c">Artifact Registry</span>
+│   ├── database/         <span class="c">Cloud SQL + Secret</span>
+│   ├── static_site/      <span class="c">GCS + backend bucket + Cloud CDN</span>
+│   ├── api_service/      <span class="c">Cloud Run + SA + IAM（api / admin で 2 回呼ぶ）</span>
+│   ├── job/              <span class="c">Cloud Run Jobs</span>
+│   └── frontdoor/        <span class="c">LB + URL マップ + 証明書 + DNS</span>
+└── environments/prod/    <span class="c">上記を組み合わせる</span></pre>
+
+    <p><b>鶏卵問題。</b>state は GCS に置きたいが、そのバケットを Terraform で作るなら
+    その apply の state はどこに置くのか。<code>bootstrap/</code> だけローカル state で apply し、
+    あとから <code>backend.tf</code> を書いて <code>terraform init -migrate-state</code> で移した。</p>
+
+    <p><b>DNS ゾーンは Terraform の管理外。</b><code>data</code> で参照するだけにしてある。
+    <code>terraform destroy</code> してもゾーンは残り、ドメインが死なない。</p>
+
+    <p><b>イメージの更新は Terraform の仕事にしない。</b><code>ignore_changes</code> を付けてあるので、
+    デプロイは <code>gcloud run services update --image</code> で行う。CI を入れたらそちらへ移す。</p>
+  </section>
+
+  <!-- ================================================== 7 -->
+  <section id="s7">
+    <h2 data-sec="§07">積み残し</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>項目</th><th>いまの状態</th></tr></thead>
+        <tbody>
+          <tr><td>CI/CD</td><td>無し。build と deploy は手動。Workload Identity Federation で鍵なし化するのが次</td></tr>
+          <tr><td>権限の分離</td><td><code>users</code> の全員が管理者。読者アカウントを作るには権限列か別ガードが要る</td></tr>
+          <tr><td>ファイルと DB の整合</td><td>画像アップロードは GCS 書き込みと DB 更新が別トランザクション</td></tr>
+          <tr><td>しおり</td><td><code>localStorage</code> のまま。サーバ保存は未対応</td></tr>
+          <tr><td>検索</td><td>一覧に検索・絞り込みが無い</td></tr>
+          <tr><td>監視</td><td>アップタイムチェックとアラートは未設定</td></tr>
+          <tr><td><code>min-instances</code></td><td>1 で様子見中。請求額を見てから 0 に落とすか判断</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="note__label">作った順の記録</span>
+      <p>ここまでの過程は Step.01〜08 のドキュメントに分けてある。
+      ビューアの実装、API 化、DB 導入、Laravel の作法への矯正、一覧の追加、管理画面、
+      本番設計、Terraform 実装という順。</p>
+    </div>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">ebook.furusawa.work — Vanilla JS / Laravel 13 / MySQL / Terraform + GCP</p>
+
+</div>
+</body>
+</html>
