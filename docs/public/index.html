@@ -48,14 +48,49 @@
     letter-spacing: 0.04em;
   }
 
+  /* OVERVIEW / PER PR。区切り線を敷いて、リンクではなく表題だと分かるようにする */
   .side__group {
-    margin: 0 20px 8px;
+    margin: 24px 20px 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
     font-size: 11px;
     font-weight: 700;
-    color: var(--muted);
-    letter-spacing: 0.08em;
+    color: var(--fg);
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
+  /* 先頭の表題だけは上を詰める */
+  .side__group:first-of-type { margin-top: 4px; }
+
+  /* PER PR の中で md / artifact を分ける小見出し。既定は畳んでおく */
+  .side__sub {
+    margin: 10px 20px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .side__fold > summary.side__sub {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+  /* Safari の既定マーカーを消す */
+  .side__fold > summary.side__sub::-webkit-details-marker { display: none; }
+
+  .side__fold > summary.side__sub::before {
+    content: "\25B8";
+    display: inline-block;
+    width: 1.1em;
+    color: var(--muted);
+  }
+  .side__fold[open] > summary.side__sub::before { content: "\25BE"; }
+
+  .side__fold > summary.side__sub:hover { color: var(--fg); }
+  .side__fold .side__list { margin-bottom: 8px; }
+
+  /* 小見出しの一段下にあることが分かるよう、ファイル名は深く下げる */
+  .side__fold .side__link { padding-left: 40px; }
 
   .side__list { list-style: none; margin: 0 0 24px; padding: 0; }
 
@@ -209,7 +244,16 @@
        サニタイズは行っていない
    ============================================================ */
 
-/** サイドバーに出すディレクトリ。[パス, 見出し] */
+/** サイドバーの先頭に単独で出すページ。[パス, 表示名][] */
+const OVERVIEW = [
+  ['artifact/overview.html', '概要・構成'],
+  ['artifact/structure.html', 'ディレクトリ構成'],
+];
+
+/** ハッシュ未指定のときに開くページ */
+const HOME = OVERVIEW[0][0];
+
+/** PR ごとのドキュメント。[パス, 小見出し] */
 const DIRS = [
   ['md/', 'Markdown'],
   ['artifact/', 'Artifact'],
@@ -262,45 +306,84 @@ async function listDir(dir) {
   return index?.[dir] ?? listDirByAutoindex(dir);
 }
 
+/** 見出し。CSS 側で大文字に変換される */
+function addHeading(text, className) {
+  const h = document.createElement('div');
+  h.className = className;
+  h.textContent = text;
+  el.nav.append(h);
+}
+
+function addMessage(text, parent = el.nav) {
+  const p = document.createElement('p');
+  p.className = 'side__empty';
+  p.textContent = text;
+  parent.append(p);
+}
+
+/** entries: [パス, 表示名][] */
+function addList(entries, parent = el.nav) {
+  const ul = document.createElement('ul');
+  ul.className = 'side__list';
+
+  for (const [path, label] of entries) {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.className = 'side__link';
+    a.href = `#/${path}`;
+    a.textContent = label;
+    a.dataset.path = path;
+    li.append(a);
+    ul.append(li);
+  }
+
+  parent.append(ul);
+}
+
+/** 畳んだ状態の <details> を作って返す。中身は呼び出し側が足す */
+function addFold(label) {
+  const fold = document.createElement('details');
+  fold.className = 'side__fold';
+
+  const summary = document.createElement('summary');
+  summary.className = 'side__sub';
+  summary.textContent = label;
+  fold.append(summary);
+
+  el.nav.append(fold);
+  return fold;
+}
+
 async function buildNav() {
+  // 全体像。ファイル名ではなく日本語の見出しで出す
+  addHeading('Overview', 'side__group');
+  addList(OVERVIEW);
+
+  // PR ごとの記録。md と artifact はこの下に並べる
+  addHeading('Per PR', 'side__group');
+
   for (const [dir, label] of DIRS) {
-    const group = document.createElement('div');
-    group.className = 'side__group';
-    group.textContent = label;
-    el.nav.append(group);
+    // 既定は畳んでおく。開いているページを含むものだけ setActive が開く
+    const fold = addFold(label);
 
     let files = [];
     try {
       files = await listDir(dir);
     } catch (e) {
-      const msg = document.createElement('p');
-      msg.className = 'side__empty';
-      msg.textContent = `${dir} を読めませんでした`;
-      el.nav.append(msg);
+      addMessage(`${dir} を読めませんでした`, fold);
       continue;
     }
+
+    // 上に単独で出しているものは、こちらからは除く
+    const shown = new Set(OVERVIEW.map(([path]) => path));
+    files = files.filter((name) => ! shown.has(`${dir}${name}`));
 
     if (files.length === 0) {
-      const msg = document.createElement('p');
-      msg.className = 'side__empty';
-      msg.textContent = 'ファイルなし';
-      el.nav.append(msg);
+      addMessage('ファイルなし', fold);
       continue;
     }
 
-    const ul = document.createElement('ul');
-    ul.className = 'side__list';
-    for (const name of files.sort()) {
-      const li = document.createElement('li');
-      const a = document.createElement('a');
-      a.className = 'side__link';
-      a.href = `#/${dir}${name}`;
-      a.textContent = name;
-      a.dataset.path = `${dir}${name}`;
-      li.append(a);
-      ul.append(li);
-    }
-    el.nav.append(ul);
+    addList(files.sort().map((name) => [`${dir}${name}`, name]), fold);
   }
 }
 
@@ -342,7 +425,13 @@ async function renderMarkdown(text) {
 
 function setActive(path) {
   for (const a of el.nav.querySelectorAll('.side__link')) {
-    a.classList.toggle('is-active', a.dataset.path === path);
+    const active = a.dataset.path === path;
+    a.classList.toggle('is-active', active);
+
+    // 見ているページが畳まれた欄の中にあるなら、その欄だけ開く
+    if (active) {
+      a.closest('.side__fold')?.setAttribute('open', '');
+    }
   }
 }
 
@@ -398,13 +487,10 @@ window.addEventListener('hashchange', () => show(currentPath()));
 
 (async function init() {
   await buildNav();
-  // ハッシュ未指定なら最初の md を開く
+  // ハッシュ未指定なら概要を開く
   if (!currentPath()) {
-    const first = el.nav.querySelector('.side__link[data-path$=".md"]');
-    if (first) {
-      location.replace(first.getAttribute('href'));
-      return;
-    }
+    location.replace(`#/${HOME}`);
+    return;
   }
   show(currentPath());
 })();
