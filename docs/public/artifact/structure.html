@@ -391,7 +391,7 @@
     <h1>ディレクトリ構成</h1>
     <p class="tagline">リポジトリの中身をざっくり。<b>サービスごとにディレクトリを分け、公開するものは必ず <code>public/</code> の中</b>に置く、という規則で通している。</p>
     <div class="meta">
-      <span><b>ルート</b> 6 ディレクトリ + compose.yaml</span>
+      <span><b>ルート</b> 7 ディレクトリ + compose.yaml</span>
       <span><b>方針</b> 1 サービス 1 ディレクトリ</span>
     </div>
   </header>
@@ -404,6 +404,7 @@
       <li><a href="#s3">frontend</a></li>
       <li><a href="#s4">infra</a></li>
       <li><a href="#s5">cdn / docs / tools</a></li>
+      <li><a href="#s6">.github（CI/CD）</a></li>
     </ol>
   </nav>
 
@@ -421,7 +422,8 @@
 ├── cdn/                <span class="c">ページ画像の置き場</span>
 ├── docs/               <span class="c">このドキュメント</span>
 ├── tools/              <span class="c">CLI で回す処理（サンプル画像の生成など）</span>
-└── infra/              <span class="c">Terraform。本番の GCP</span></pre>
+├── infra/              <span class="c">Terraform。本番の GCP</span>
+└── .github/workflows/  <span class="c">CI/CD（GitHub Actions）</span></pre>
 
     <div class="tablewrap">
       <table>
@@ -433,6 +435,7 @@
           <tr><td><code>docs/</code></td><td>nginx :8081</td><td>GCS + Cloud CDN</td></tr>
           <tr><td><code>tools/</code></td><td>php-cli（<code>profiles</code> で常駐しない）</td><td>—</td></tr>
           <tr><td><code>infra/</code></td><td>—</td><td>Terraform のコードそのもの</td></tr>
+          <tr><td><code>.github/</code></td><td>—</td><td>PR で CI、main へのマージで CD</td></tr>
         </tbody>
       </table>
     </div>
@@ -555,6 +558,7 @@ gcloud storage rsync -r docs/public/     gs://…-docs/</pre>
 │   ├── static_site/    <span class="c">GCS + backend bucket + Cloud CDN</span>
 │   ├── api_service/    <span class="c">Cloud Run + SA + IAM（api / admin で 2 回呼ぶ）</span>
 │   ├── job/            <span class="c">Cloud Run Jobs</span>
+│   ├── github_oidc/    <span class="c">GitHub Actions からの鍵なしの認証（WIF）</span>
 │   └── frontdoor/      <span class="c">LB + URL マップ + 証明書 + DNS</span>
 │
 └── environments/
@@ -580,8 +584,8 @@ docs/
 ├── nginx.conf
 └── public/
     ├── index.html      <span class="c">このビューア</span>
-    ├── md/             <span class="c">step01〜08</span>
-    └── artifact/       <span class="c">step01〜08 + overview / structure</span>
+    ├── md/             <span class="c">step01〜11</span>
+    └── artifact/       <span class="c">step01〜11 + overview / structure</span>
 
 tools/
 ├── Dockerfile          <span class="c">php-cli + GD</span>
@@ -598,8 +602,35 @@ tools/
 
     <p><code>docs/public/index.json</code> はリポジトリに含めていない。
     ローカルは nginx の <code>autoindex</code> でファイル一覧を組み立てるが、GCS には autoindex が無い。
-    <b>デプロイの直前にだけ生成してアップロードする。</b>
+    <b>CD がデプロイの直前にだけ生成してアップロードする。</b>
     コミットしてしまうと、ローカルで古い一覧が優先されて新しいページが出なくなる。</p>
+  </section>
+
+  <!-- ================================================== 6 -->
+  <section id="s6">
+    <h2 data-sec="§06">.github（CI/CD）</h2>
+    <p class="lede">検査は PR の段階、デプロイは main へのマージ。変更のあったものだけ検査する。</p>
+
+<pre>.github/workflows/
+├── ci-backend.yml      <span class="c">backend/ が変わった PR で：Pint → PHPUnit</span>
+├── ci-infra.yml        <span class="c">infra/ が変わった PR で：fmt → validate → plan</span>
+└── cd.yml              <span class="c">main への push で：ビルド → デプロイ → 静的ファイルの配置</span></pre>
+
+    <p><b>CI はファイルを分け、<code>paths</code> で絞っている。</b>docs だけを直した PR で、
+    PHPUnit や terraform plan が走らない。</p>
+
+    <p><b>CI の backend は DB サービスを立てない。</b><code>phpunit.xml</code> が SQLite のインメモリを強制しているので、
+    PHP があればテストは通る。<code>APP_KEY</code> だけは <code>.env.example</code> から <code>.env</code> を作って生成する。</p>
+
+    <p><b>CI の infra は plan を表示するだけ。</b>apply は差分を読んでから手で行う。
+    plan の結果は実行ページの Summary に出るので、PR の Checks から 1 クリックで読める。</p>
+
+    <div class="note">
+      <span class="note__label">GCP への入り方は infra 側にある</span>
+      <p>workflow には鍵を置いていない。GitHub の OIDC トークンを GCP で交換して SA になりすます仕組み
+      （Workload Identity Federation）は、<code>infra/modules/github_oidc/</code> に Terraform で書いてある。
+      workflow に書いているのは Provider の名前と SA のメールアドレスだけで、どちらも秘密ではない。</p>
+    </div>
   </section>
 
   <hr class="end">
