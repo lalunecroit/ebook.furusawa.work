@@ -45,15 +45,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: google-github-actions/auth@v3
+      # token_format: access_token で、docker login に渡すトークンも出力させる
+      - id: auth
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.DEPLOYER_SA }}
+          token_format: access_token
 
       - uses: google-github-actions/setup-gcloud@v3
 
-      - name: Artifact Registry に docker を繋ぐ
-        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+      # gcloud auth configure-docker (docker-credential-gcloud 経由) は使わない。
+      # buildx から補助コマンドを呼ぶ形だと、WIF の資格情報が渡らず
+      # 「error getting credentials」で push が落ちたため。
+      # トークンを直接渡して docker login する (auth アクションの公式の推奨)
+      - name: Artifact Registry にログイン
+        uses: docker/login-action@v4
+        with:
+          registry: asia-northeast1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
 
       - uses: docker/setup-buildx-action@v4
 
