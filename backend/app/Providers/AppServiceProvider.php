@@ -48,7 +48,7 @@ class AppServiceProvider extends ServiceProvider
                 // 本番では何も渡さない。Cloud Run のサービスアカウントが
                 // ADC として拾われる。エンドポイントを差し替えているときだけ、
                 // 認証の無いエミュレータに合わせて資格情報を無効化する。
-                'credentialsFetcher' => $endpoint ? new InsecureCredentials() : null,
+                'credentialsFetcher' => $endpoint ? new InsecureCredentials : null,
             ]));
 
             $adapter = new GoogleCloudStorageAdapter(
@@ -57,7 +57,7 @@ class AppServiceProvider extends ServiceProvider
                 // バケットは均一なバケットレベルのアクセス (allUsers:objectViewer を
                 // バケットに付ける) 前提。この設定ではオブジェクト単位の ACL が
                 // 使えず、visibility を設定しようとすると 400 になるため無効化する。
-                new UniformBucketLevelAccessVisibility(),
+                new UniformBucketLevelAccessVisibility,
             );
 
             return new FilesystemAdapter(new Flysystem($adapter, $config), $adapter, $config);

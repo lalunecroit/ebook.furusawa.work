@@ -33,3 +33,16 @@ variable "dns_zone_name" {
   type        = string
   default     = "furusawa-work"
 }
+
+variable "github_repository" {
+  description = "GitHub リポジトリ (owner/name)"
+  type        = string
+}
+
+variable "github_repository_id" {
+  description = <<-EOT
+    GitHub リポジトリの数値 ID。WIF の信頼判定に使う。
+      curl -s https://api.github.com/repos/<owner>/<name> | jq .id
+  EOT
+  type        = string
+}

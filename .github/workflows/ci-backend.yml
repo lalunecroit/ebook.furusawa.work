@@ -1,0 +1,69 @@
+# backend の検査。PR の段階で、壊れたものがマージされる前に止める。
+#
+# DB サービスは立てない。phpunit.xml が SQLite のインメモリを強制しているので、
+# PHP があればテストは通る (compose の環境変数にも依存していないことを確認済み)。
+
+name: CI / backend
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci-backend.yml"
+  workflow_dispatch:
+
+# 同じ PR に続けて push したら、古い実行は止める
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Pint と PHPUnit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # 本番イメージと同じ PHP。GD は画像アップロードのテスト (fake()->image()) に要る
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: gd, pdo_sqlite, sqlite3, mbstring
+          coverage: none
+
+      - name: composer のキャッシュ場所を調べる
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      # テスト (セッションやログイン) に APP_KEY が要る。
+      # ローカルは entrypoint が作っているが、CI では自前で用意する
+      - name: .env を用意する
+        run: cp .env.example .env
+
+      - name: 依存を入れる
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: APP_KEY を作る
+        run: php artisan key:generate
+
+      - name: Pint（整形の検査）
+        run: ./vendor/bin/pint --test
+
+      - name: PHPUnit
+        run: php artisan test
