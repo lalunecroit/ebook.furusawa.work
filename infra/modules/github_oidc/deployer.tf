@@ -57,6 +57,18 @@ resource "google_storage_bucket_iam_member" "deployer_upload" {
   member = local.deployer
 }
 
+# gcloud storage rsync は、転送の前にバケット自体のメタデータを読む (storage.buckets.get)。
+# objectAdmin はオブジェクトの操作だけで、これを含まない。
+# legacyBucketReader は buckets.get とオブジェクトの一覧だけの役割で、
+# バケットの設定や IAM は変えられない。storage.admin まで上げずに済む。
+resource "google_storage_bucket_iam_member" "deployer_bucket_read" {
+  for_each = toset(var.deploy_buckets)
+
+  bucket = each.value
+  role   = "roles/storage.legacyBucketReader"
+  member = local.deployer
+}
+
 # Cloud CDN のキャッシュ無効化。
 #
 # 既成の役割だと roles/compute.loadBalancerAdmin まで上げる必要があり、
