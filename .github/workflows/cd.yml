@@ -1,0 +1,163 @@
+# 本番へのデプロイ。main が更新されたときに動く。
+#
+# これまで手で叩いていた手順 (step08 の 3.4、step09 の v2 デプロイ) をそのまま並べたもの。
+#
+#   backend  イメージを build / push → マイグレーション → api / admin を差し替え → 疎通確認
+#   static   frontend と docs を GCS へ → .md の Content-Type → CDN のキャッシュ無効化
+#
+# 認証は github-deployer SA。main への push からしか使えないように GCP 側で縛ってある
+# (infra/modules/github_oidc)。鍵は使わない。
+
+name: CD
+
+on:
+  push:
+    branches: [main]
+  # 失敗したときに、同じコミットのまま流し直せるように。
+  # main 以外で起動しても GCP 側が受け付けないので、下の if でも止めておく
+  workflow_dispatch:
+
+# デプロイは同時に 1 つだけ。途中で止めると中途半端な状態が残るので、取り消さずに順番待ちにする
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # GitHub の OIDC トークンを受け取るのに要る
+
+env:
+  REGION: asia-northeast1
+  # タグはコミットハッシュ。どのコミットが本番で動いているか一目で分かり、戻すときもタグを差し替えるだけ
+  IMAGE: asia-northeast1-docker.pkg.dev/my-project-book-509215/app/api:${{ github.sha }}
+
+  # どれも秘密ではない (terraform output github_actions で出るもの)
+  WIF_PROVIDER: projects/304815043031/locations/global/workloadIdentityPools/github/providers/github-actions
+  DEPLOYER_SA: github-deployer@my-project-book-509215.iam.gserviceaccount.com
+
+jobs:
+  backend:
+    name: backend（ビルドとデプロイ）
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Artifact Registry に docker を繋ぐ
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+
+      - uses: docker/setup-buildx-action@v4
+
+      # ランナーは amd64 なので --platform の指定は要らない (手元の Apple Silicon とは違う)。
+      # レイヤのキャッシュを GitHub 側に残し、composer install をやり直さずに済ませる
+      - name: イメージを build して push
+        uses: docker/build-push-action@v7
+        with:
+          context: backend
+          file: backend/Dockerfile.prod
+          push: true
+          tags: ${{ env.IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # マイグレーションは新しいコードを出す前に流す。
+      # 新しいコードが新しいテーブル定義を前提にしていても、切り替えた瞬間に壊れないように。
+      # (列を消すような変更は、古いコードが動いている間に壊れるので別途段階を分ける)
+      - name: マイグレーション
+        run: |
+          gcloud run jobs update ebook-migrate --image "$IMAGE" --region "$REGION" --quiet
+          gcloud run jobs execute ebook-migrate --region "$REGION" --wait
+
+      - name: api と admin を差し替える
+        run: |
+          gcloud run services update ebook-api   --image "$IMAGE" --region "$REGION" --quiet
+          gcloud run services update ebook-admin --image "$IMAGE" --region "$REGION" --quiet
+
+      # 差し替えた直後に、外から本当に繋がるかを見る。DB まで確かめる (?deep=1)
+      - name: 疎通確認
+        run: |
+          curl -fsS --retry 5 --retry-all-errors --retry-delay 5 \
+            "https://api.ebook.furusawa.work/api/health?deep=1"
+          echo
+          curl -fsS -o /dev/null --retry 5 --retry-all-errors --retry-delay 5 \
+            -w "admin: %{http_code}\n" "https://admin.ebook.furusawa.work/admin/login"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### backend"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| イメージ | \`$IMAGE\` |"
+            for s in ebook-api ebook-admin; do
+              rev=$(gcloud run services describe "$s" --region "$REGION" \
+                      --format='value(status.latestReadyRevisionName)' 2>/dev/null || echo '-')
+              echo "| $s | \`$rev\` |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  static:
+    name: static（frontend と docs）
+    # 画面が新しい API を前提にしていることがあるので、backend が出てから出す
+    needs: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      FRONTEND_BUCKET: gs://my-project-book-509215-frontend
+      DOCS_BUCKET: gs://my-project-book-509215-docs
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      # docs の一覧 (index.json) の生成に使う。tools コンテナと同じ版
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: none
+
+      # 削除はしない (rsync の既定)。消したファイルをバケットからも消したいときだけ
+      # --delete-unmatched-destination-objects を付けて手で流す
+      - name: frontend
+        run: |
+          gcloud storage rsync -r frontend/public/ "$FRONTEND_BUCKET/" \
+            --cache-control="public, max-age=300"
+
+      # index.json はリポジトリに入れていない。ローカルは nginx の autoindex で一覧を作るが、
+      # GCS には autoindex が無いので、配る直前に作る
+      - name: docs
+        run: |
+          php tools/bin/generate-docs-index.php
+          gcloud storage rsync -r docs/public/ "$DOCS_BUCKET/" \
+            --cache-control="public, max-age=300"
+
+          # .md は既定で text/markdown になり「ソース」リンクがダウンロードになる。
+          # rsync は同期済みのファイルを飛ばすので、アップロード後に付け直す
+          gcloud storage objects update "$DOCS_BUCKET/md/*.md" --content-type=text/plain
+
+      # 5 分 (max-age=300) 待てば入れ替わるが、デプロイ直後に古いものが見えないよう消しておく。
+      # cdn. の画像は ?v= で URL が変わる仕組みなので触らない
+      - name: CDN のキャッシュ無効化
+        run: |
+          for host in www.ebook.furusawa.work docs.ebook.furusawa.work; do
+            gcloud compute url-maps invalidate-cdn-cache ebook \
+              --host "$host" --path "/*" --async
+          done
