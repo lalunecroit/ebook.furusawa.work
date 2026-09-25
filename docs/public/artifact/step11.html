@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CI/CD の自動化</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / ci-cd</div>
+    <h1>PR で止め、main で出す</h1>
+    <p class="tagline">これまで手で叩いていたデプロイを GitHub Actions に移す。PR の段階でテストと plan を流し、main へのマージで本番へ出す。GCP には鍵を使わずに入る。</p>
+    <div class="meta">
+      <span><b>対象</b> .github/workflows / infra/modules/github_oidc</span>
+      <span><b>認証</b> Workload Identity Federation</span>
+      <span><b>PR</b> #33 〜 #41</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s0">全体の流れ</a></li>
+      <li><a href="#s1">鍵なしで GCP に入る</a></li>
+      <li><a href="#s2">権限を触るものにだけ付ける</a></li>
+      <li><a href="#s3">CI：PR の段階で止める</a></li>
+      <li><a href="#s4">CD：main へのマージで出す</a></li>
+      <li><a href="#s5">ハマりどころ</a></li>
+      <li><a href="#s6">積み残し</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 0 -->
+  <section id="s0">
+    <h2 data-sec="§00">全体の流れ</h2>
+    <p class="lede">検査は PR の段階、デプロイは main へのマージ。インフラの変更だけは、plan を読んでから手で apply する。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>feature/stepNN</b><span>作業ブランチ</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>develop</b><span>PR で CI</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>main</b><span>PR で CI → マージで CD</span></div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th></th><th>何をするか</th><th>いつ動くか</th><th>SA</th></tr></thead>
+        <tbody>
+          <tr><td><b>CI</b></td><td>Pint、PHPUnit、<code>terraform plan</code></td><td>develop / main 向けの PR</td><td><code>github-planner</code></td></tr>
+          <tr><td><b>CD</b></td><td>build → マイグレーション → デプロイ → 静的配置</td><td>main への push</td><td><code>github-deployer</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>main にマージされてから検査すると、<b>壊れたコードが入ってから気づく</b>ことになる。だからテストは PR で流す。</p>
+
+    <div class="note">
+      <span class="note__label">先に片付けたこと</span>
+      <p>CI で Pint（Laravel 公式の整形ツール）を強制する前に、既存の違反を 6 ファイル直した。テストメソッド名の大文字は Pint に任せると <code>API</code> が <code>ap_i</code> になるので、手で小文字にした。<code>new X()</code> の括弧は、PSR-12 は付ける側だが Laravel は外す流儀なので、Laravel に合わせた。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">鍵なしで GCP に入る</h2>
+    <p class="lede">SA の JSON 鍵を GitHub に置くと、漏れた時点で誰でも GCP を操作できる。Workload Identity Federation では鍵がそもそも存在しない。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>GitHub Actions</b><span>実行ごとに OIDC トークンを発行</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>STS</b><span>検証して交換</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>SA になりすます</b><span>短命のトークン</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>GCP</b><span>デプロイ / plan</span></div>
+    </div>
+
+    <h3>SA を 2 つに分ける</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>SA</th><th>使う場面</th><th>誰から使えるか</th></tr></thead>
+        <tbody>
+          <tr><td><code>github-deployer</code></td><td>CD</td><td><b>main への push からだけ</b></td></tr>
+          <tr><td><code>github-planner</code></td><td>CI の plan</td><td>このリポジトリの全ブランチ（読み取り専用）</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>PR のブランチからデプロイ権限を使えると、<b>レビュー前のコードを本番に出せてしまう</b>。</p>
+
+    <h3>信頼の条件は 3 段</h3>
+    <div class="recipes">
+      <div class="recipe">
+        <h3>① Provider：このリポジトリ以外は交換させない</h3>
+<pre>attribute_condition = <span class="s">"assertion.repository_id == '1378122529'"</span></pre>
+        <p>名前ではなく<b>数値 ID</b>。リポジトリを消して作り直すと、他人が同じ名前を取れるため。</p>
+      </div>
+      <div class="recipe">
+        <h3>② deployer：subject が main への push と一致したときだけ</h3>
+<pre>repo:lalunecroit<span class="k">@38752755</span>/ebook.furusawa.work<span class="k">@1378122529</span>:ref:refs/heads/main</pre>
+        <p><code>ref</code> ではなく subject で縛る。<code>pull_request_target</code> は PR 起点なのに ref が main になるが、subject は <code>…:pull_request</code> なので一致しない。</p>
+      </div>
+      <div class="recipe">
+        <h3>③ planner：リポジトリが一致すれば全ブランチ</h3>
+        <p>読み取り専用なので広くてよい。フォークからの PR には GitHub が OIDC トークンを発行しないので、外部の人は使えない。</p>
+      </div>
+    </div>
+
+    <div class="note note--warn">
+      <span class="note__label">subject の形式はリポジトリで違う</span>
+      <p>このリポジトリは「不変 ID 付き」（<code>use_immutable_subject: true</code>）で、名前の後ろに数値 ID が付く。名前だけの形式（<code>repo:owner/name:…</code>）で縛ると一致せず、なりすましが 403 になる。形式は <code>gh api repos/&lt;owner&gt;/&lt;name&gt;/actions/oidc/customization/sub</code> で確認できる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">権限を触るものにだけ付ける</h2>
+    <p class="lede"><code>roles/editor</code> を渡せば楽だが、漏れたときに何でもできてしまう。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>SA</th><th>役割</th><th>対象</th></tr></thead>
+        <tbody>
+          <tr><td>deployer</td><td><code>artifactregistry.writer</code></td><td>リポジトリ <code>app</code> だけ</td></tr>
+          <tr><td></td><td><code>run.developer</code></td><td>api / admin / migrate だけ</td></tr>
+          <tr><td></td><td><code>iam.serviceAccountUser</code></td><td>上の 3 つの実行時 SA だけ（actAs）</td></tr>
+          <tr><td></td><td><code>storage.objectAdmin</code> + <code>legacyBucketReader</code></td><td>frontend / docs だけ（<b>cdn は除外</b>）</td></tr>
+          <tr><td></td><td>カスタムロール</td><td>CDN のキャッシュ無効化だけ</td></tr>
+          <tr><td>planner</td><td><code>viewer</code> + <code>iam.securityReviewer</code></td><td>プロジェクト全体（読み取り）</td></tr>
+          <tr><td></td><td><code>storage.objectViewer</code></td><td>tfstate バケット</td></tr>
+          <tr><td></td><td><code>secretmanager.secretAccessor</code></td><td>DB パスワードだけ</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><b>actAs。</b>Cloud Run の新しいリビジョンは実行時の SA として動く。デプロイする側がその SA への <code>actAs</code> を持っていないと、差し替え自体が権限エラーになる。</p>
+    <p><b>カスタムロール。</b>既成の役割だと <code>compute.loadBalancerAdmin</code> まで上げる必要があり、LB の設定を書き換えられてしまう。無効化に要る 3 権限だけにした。</p>
+    <p><b>cdn を外す。</b>本番の画像は管理画面から入るもので、リポジトリの <code>cdn/public/</code> はサンプル。毎回 rsync すると本番のデータと混ざる。</p>
+
+    <div class="note note--warn">
+      <span class="note__label">planner は DB パスワードを読める</span>
+      <p>state には DB パスワードが平文で入っていて、planner は state を読む。このリポジトリに push できる人は、間接的に DB パスワードを読めることになる。個人のリポジトリなので許容している。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">CI：PR の段階で止める</h2>
+
+    <h3>backend</h3>
+    <div class="flow">
+      <div class="flow__box"><b>.env</b><span>.env.example から</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>composer install</b></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>key:generate</b><span>APP_KEY</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>pint --test</b></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>artisan test</b><span>86 件</span></div>
+    </div>
+    <p><b>DB サービスは立てない。</b><code>phpunit.xml</code> が SQLite のインメモリを強制している。compose の環境変数に守られて通っていないか、compose の外で流して確かめてある。</p>
+
+    <h3>infra</h3>
+    <div class="flow">
+      <div class="flow__box"><b>fmt -check</b></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>init</b><span>-lockfile=readonly</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>validate</b></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>plan</b><span>-lock=false</span></div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>決めたこと</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td><code>-lock=false</code></td><td>planner は state に書けない。読むだけの plan がロックを取らなくても state は壊れない</td></tr>
+          <tr><td>差分があっても成功</td><td><code>-detailed-exitcode</code> の 2（差分あり）は infra の PR では当然。1（エラー）だけ落とす</td></tr>
+          <tr><td>plan を Summary に出す</td><td>PR の Checks から 1 クリック。sensitive な値は Terraform が伏せる</td></tr>
+          <tr><td>フォークの PR では流さない</td><td>OIDC トークンが出ないので必ず失敗する</td></tr>
+          <tr><td>lock に Linux のハッシュ</td><td>Mac で作った lock には darwin_arm64 のハッシュしか無い</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">CD：main へのマージで出す</h2>
+
+    <h3>backend</h3>
+    <div class="flow">
+      <div class="flow__box"><b>build / push</b><span>タグはコミットハッシュ</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>migrate</b><span>ebook-migrate</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>差し替え</b><span>api / admin</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>疎通確認</b><span>/api/health?deep=1</span></div>
+    </div>
+
+    <h3>static（backend が成功してから）</h3>
+    <div class="flow">
+      <div class="flow__box"><b>frontend</b><span>rsync</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>docs</b><span>index.json → rsync → Content-Type</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>CDN 無効化</b><span>www と docs だけ</span></div>
+    </div>
+
+    <div class="recipes">
+      <div class="recipe">
+        <h3>タグはコミットハッシュ</h3>
+        <p>どのコミットが本番で動いているか一目で分かり、戻すときもタグを差し替えるだけ。Step.08 の未決事項「v1 固定かコミットハッシュか」はここで決着した。</p>
+      </div>
+      <div class="recipe">
+        <h3>マイグレーションは先に</h3>
+        <p>新しいコードが新しいテーブル定義を前提にしていても、切り替えた瞬間に壊れない。ただし列を消す変更は、古いコードが動いている間に壊れるので段階を分ける。</p>
+      </div>
+      <div class="recipe">
+        <h3>Docker の認証はトークンを直接渡す</h3>
+<pre><span class="k">- id:</span> auth
+  <span class="k">uses:</span> google-github-actions/auth@v3
+  <span class="k">with:</span>
+    <span class="k">token_format:</span> access_token
+<span class="k">- uses:</span> docker/login-action@v4
+  <span class="k">with:</span>
+    <span class="k">username:</span> oauth2accesstoken
+    <span class="k">password:</span> ${{ steps.auth.outputs.access_token }}</pre>
+        <p>補助コマンド（<code>gcloud auth configure-docker</code>）を経由しない。auth アクションの公式の推奨。</p>
+      </div>
+      <div class="recipe">
+        <h3>CDN の無効化は www と docs だけ</h3>
+        <p><code>cdn.</code> の画像は <code>?v=</code> で URL が変わる仕組みなので消す必要がない。消すと全画像がオリジンから取り直しになる。</p>
+      </div>
+    </div>
+
+    <p>ランナーは amd64 なので、手元の Apple Silicon で要った <code>--platform linux/amd64</code> は不要。Docker のレイヤは GitHub 側にキャッシュする。</p>
+
+    <div class="note">
+      <span class="note__label">インフラの変更を含むとき</span>
+      <p>develop にマージしたあと、<b>main にマージする前に <code>terraform apply</code></b>。CD は GCP の権限を前提に動くので、先に main に入れると権限の変更が間に合わずに落ちる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">ハマりどころ</h2>
+    <p class="lede">CD は main でしか動かないので、本番へのリリースそのものが初回の実行になる。そこで出たものを並べる。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>症状</th><th>原因</th></tr></thead>
+        <tbody>
+          <tr><td>push で <code>error getting credentials</code>（本文が空）</td><td>subject が一致せず SA になりすませていない。資格情報ファイルを書くだけの auth ステップは成功に見え、Docker の補助コマンドが交換する段階で本文の無いエラーになる</td></tr>
+          <tr><td>auth で <code>getAccessToken</code> が 403</td><td>同上。subject を名前だけの形式で縛っていたが、このリポジトリは不変 ID 付きの形式</td></tr>
+          <tr><td>rsync で <code>storage.buckets.get</code> が 403</td><td><code>objectAdmin</code> はバケットのメタデータを読めない。<code>legacyBucketReader</code> を足す</td></tr>
+          <tr><td>plan に毎回 <code>client = "gcloud" -&gt; null</code></td><td>gcloud でデプロイすると付く印。<code>ignore_changes</code> に入れる</td></tr>
+          <tr><td>手元から planner になりすませない</td><td>Owner でも <code>getAccessToken</code> は含まれない。IAM を書き換えてまで試さず、CI で確かめる</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================== 6 -->
+  <section id="s6">
+    <h2 data-sec="§06">積み残し</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>項目</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td>ブランチ保護</td><td>CI が落ちてもマージできる。<code>paths</code> で絞った workflow を必須にすると、該当ファイルを触らない PR が永遠に待たされる</td></tr>
+          <tr><td>タグと Release</td><td><code>0.9.0</code> まで。Step.10 / 11 が未作成</td></tr>
+          <tr><td><code>ubuntu-latest</code></td><td>2026-10-19 から Ubuntu 26。固定するなら <code>ubuntu-24.04</code></td></tr>
+          <tr><td>イメージの保持</td><td>コミットハッシュのタグ付きは保持ポリシーで消えない。期限を足す</td></tr>
+          <tr><td>Environments</td><td>使うと subject が <code>…:environment:&lt;name&gt;</code> に変わる。deployer の許可も合わせて変える</td></tr>
+          <tr><td>Actions の固定</td><td>major タグで指定。厳密にするならコミットハッシュで固定する</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">ebook.furusawa.work — Step.11 CI/CD</p>
+
+</div>
+</body>
+</html>
