@@ -1,0 +1,124 @@
+# infra の検査。PR で plan を表示するだけで、apply は手で行う。
+# インフラの変更は、差分を読んでから通したいため (step07 の 9 章)。
+#
+# plan は読み取り専用の SA (github-planner) で流す。
+# 鍵は使わず、Workload Identity Federation で GitHub の OIDC トークンを交換する。
+
+name: CI / infra
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/ci-infra.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: 1.16.3
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  fmt:
+    name: terraform fmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: 整形の検査
+        run: terraform fmt -check -recursive -diff infra
+
+  plan:
+    name: terraform plan (${{ matrix.root }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # フォークからの PR には GitHub が OIDC トークンを発行しないので、GCP に入れない。
+    # 失敗させるのではなく、最初から流さない
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
+    permissions:
+      contents: read
+      id-token: write # GitHub の OIDC トークンを受け取るのに要る
+
+    strategy:
+      fail-fast: false
+      matrix:
+        root: [bootstrap, environments/prod]
+
+    defaults:
+      run:
+        working-directory: infra/${{ matrix.root }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # 値はどれも秘密ではない (terraform output github_actions で出るもの)
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/304815043031/locations/global/workloadIdentityPools/github/providers/github-actions
+          service_account: github-planner@my-project-book-509215.iam.gserviceaccount.com
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          # 標準出力を加工するラッパーは使わない。終了コードをそのまま見たいため
+          terraform_wrapper: false
+
+      # lock ファイルは書き換えない。CI で勝手にプロバイダが上がるのを防ぐ
+      - name: init
+        run: terraform init -input=false -lockfile=readonly
+
+      - name: validate
+        run: terraform validate -no-color
+
+      # planner には state への書き込み権限が無いので、ロックは取らない。
+      # 読むだけの plan がロックを取らなくても state は壊れない。
+      #
+      # -detailed-exitcode の終了コード: 0 差分なし / 1 エラー / 2 差分あり
+      # 差分があるのは infra を変える PR では当然なので、失敗にはしない。
+      - name: plan
+        id: plan
+        run: |
+          set +e
+          terraform plan -input=false -no-color -lock=false -detailed-exitcode > plan.txt 2>&1
+          code=$?
+          set -e
+          cat plan.txt
+          echo "exitcode=$code" >> "$GITHUB_OUTPUT"
+          [ "$code" -ne 1 ]
+
+      # 実行結果のページに plan を載せる。PR の Checks から辿れる。
+      # 公開リポジトリなので誰でも見られるが、sensitive な値は Terraform が伏せて出す
+      - name: plan を Summary に出す
+        if: always()
+        run: |
+          {
+            echo "### terraform plan: \`${{ matrix.root }}\`"
+            echo
+            case "${{ steps.plan.outputs.exitcode }}" in
+              0) echo "差分なし" ;;
+              2) echo "**差分あり**。内容を確認してから、手元で apply する" ;;
+              *) echo "**失敗**。ログを確認する" ;;
+            esac
+            echo
+            echo "<details><summary>plan の出力</summary>"
+            echo
+            echo '```'
+            cat plan.txt 2>/dev/null || echo "(plan は実行されていない)"
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
