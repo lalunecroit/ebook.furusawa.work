@@ -18,6 +18,14 @@ variable "repository_id" {
   type        = string
 }
 
+variable "repository_owner_id" {
+  description = <<-EOT
+    リポジトリ所有者の数値 ID。CD 用の subject を組み立てるのに使う。
+      curl -s https://api.github.com/repos/<owner>/<name> | jq .owner.id
+  EOT
+  type        = string
+}
+
 variable "deploy_branch" {
   description = "デプロイ権限を使えるブランチ。PR のブランチからは本番を触らせない"
   type        = string

@@ -39,6 +39,14 @@ variable "github_repository" {
   type        = string
 }
 
+variable "github_repository_owner_id" {
+  description = <<-EOT
+    リポジトリ所有者の数値 ID。CD 用の subject (不変 ID 付き) に要る。
+      curl -s https://api.github.com/repos/<owner>/<name> | jq .owner.id
+  EOT
+  type        = string
+}
+
 variable "github_repository_id" {
   description = <<-EOT
     GitHub リポジトリの数値 ID。WIF の信頼判定に使う。
