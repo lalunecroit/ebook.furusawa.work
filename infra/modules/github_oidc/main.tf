@@ -10,12 +10,21 @@
 locals {
   pool_name = google_iam_workload_identity_pool.github.name
 
-  # CD 用。main ブランチへの push からの実行だけを受け付ける。
+  # GitHub の OIDC トークンの subject は「不変 ID 付き」の形式で出てくる。
+  #   repo:<owner>@<owner_id>/<name>@<repo_id>:ref:refs/heads/<branch>
+  # 名前だけの形式 (repo:<owner>/<name>:...) で縛ると一致せず、なりすましが 403 になる。
+  # 形式はリポジトリの設定で決まり、次で確認できる (use_immutable_subject):
+  #   gh api repos/<owner>/<name>/actions/oidc/customization/sub
+  repo_owner   = split("/", var.repository)[0]
+  repo_name    = split("/", var.repository)[1]
+  subject_repo = "${local.repo_owner}@${var.repository_owner_id}/${local.repo_name}@${var.repository_id}"
+
+  # CD 用。main ブランチへの push (と手動実行) からだけ受け付ける。
   #
   # subject (assertion.sub) で縛るのは、ref だけで縛ると pull_request_target の
   # ような「PR 起点なのに ref が main になる」イベントでも通ってしまうため。
-  # push の subject は repo:<owner>/<name>:ref:refs/heads/<branch> になる。
-  deployer_principal = "principal://iam.googleapis.com/${local.pool_name}/subject/repo:${var.repository}:ref:refs/heads/${var.deploy_branch}"
+  # そちらの subject は …:pull_request になるので、ここには一致しない。
+  deployer_principal = "principal://iam.googleapis.com/${local.pool_name}/subject/repo:${local.subject_repo}:ref:refs/heads/${var.deploy_branch}"
 
   # CI 用。このリポジトリからの実行なら、どのブランチ・どの PR でも受け付ける。
   # 読み取り専用なので広くてよい。フォークからの PR には GitHub が OIDC トークンを発行しない。

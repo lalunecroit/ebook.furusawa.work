@@ -218,10 +218,11 @@ module "frontdoor" {
 module "github_oidc" {
   source = "../../modules/github_oidc"
 
-  project_id    = var.project_id
-  region        = var.region
-  repository    = var.github_repository
-  repository_id = var.github_repository_id
+  project_id          = var.project_id
+  region              = var.region
+  repository          = var.github_repository
+  repository_id       = var.github_repository_id
+  repository_owner_id = var.github_repository_owner_id
 
   # CD が触るもの
   artifact_registry_repository = module.registry.repository_id
