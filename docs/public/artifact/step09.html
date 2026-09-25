@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>本番の動作確認と修正</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / backend</div>
+    <h1>本番を触って、見つけて、直す</h1>
+    <p class="tagline">LB・証明書・DNS がそろい、本番が外から見られるようになった。実際に触って確認し、そこで見つかった問題を直す。あわせて README を書き直した。</p>
+    <div class="meta">
+      <span><b>対象</b> backend / README</span>
+      <span><b>本番への反映</b> 手動（v2 イメージ）</span>
+      <span><b>テスト</b> 86 件</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s0">本番のシードは書籍だけ</a></li>
+      <li><a href="#s1">admin ホストの / を管理画面へ</a></li>
+      <li><a href="#s2">開発環境は起動時にマイグレーション</a></li>
+      <li><a href="#s3">本番への反映と確認</a></li>
+      <li><a href="#s4">ハマりどころ</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 0 -->
+  <section id="s0">
+    <h2 data-sec="§00">本番のシードは書籍だけ</h2>
+    <p class="lede">空の本番 DB にサンプルの書籍を入れようとしたら、シーダーが落ちた。</p>
+
+<pre>gcloud run jobs execute ebook-migrate --wait \
+  --args=artisan,db:seed,--force
+
+<span class="c">Call to undefined function Database\Factories\fake()</span></pre>
+
+    <div class="flow">
+      <div class="flow__box"><b>DatabaseSeeder</b><span>雛形のまま Test User を作る</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>UserFactory</b><span>fake() を呼ぶ</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>fakerphp/faker</b><span>dev 依存。本番イメージに無い</span></div>
+    </div>
+
+    <p><b>そもそも本番に Test User を作られては困る。</b>Faker が無くて偶然止まったが、止まるべき理由はそこではない。テストユーザは開発とテストのときだけにし、書籍は環境を問わず入れる。</p>
+
+<pre><span class="k">if</span> (app()->environment(<span class="s">'local'</span>, <span class="s">'testing'</span>)
+    && ! User::where(<span class="s">'email'</span>, <span class="s">'test@example.com'</span>)->exists()) {
+    User::factory()->create([...]);
+}
+
+$this->call(BookSeeder::class);</pre>
+
+    <p>存在チェックも足して冪等にした。元の形では 2 回目の <code>db:seed</code> が一意制約で落ちていた。<code>BookSeeder</code> は <code>updateOrCreate</code> で何度流しても同じになるので、それに揃えた。</p>
+  </section>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">admin ホストの / を管理画面へ</h2>
+    <p class="lede"><code>admin.ebook.furusawa.work/</code> が Laravel の初期画面を出していた。</p>
+
+<pre><span class="c">// routes/web.php — welcome より前に置く</span>
+<span class="k">if</span> ($adminHost = config(<span class="s">'app.admin_host'</span>)) {
+    Route::domain($adminHost)->group(<span class="k">function</span> () {
+        Route::redirect(<span class="s">'/'</span>, <span class="s">'/admin/books'</span>);
+    });
+}
+
+Route::get(<span class="s">'/'</span>, fn () => view(<span class="s">'welcome'</span>));</pre>
+
+    <div class="recipes">
+      <div class="recipe">
+        <h3>管理画面グループではなく web.php に置く</h3>
+        <p>welcome の <code>/</code> はホストを限定していないので全ホストに当たり、しかも管理画面を登録する <code>then:</code> より先に読まれる。あとから足した domain 付きの <code>/</code> は届かない。</p>
+      </div>
+      <div class="recipe">
+        <h3>redirect は group の中で</h3>
+        <p><code>Route::domain(…)->redirect(…)</code> とは書けない。<code>redirect</code> は <code>RouteRegistrar</code> の passthru に無い。</p>
+      </div>
+      <div class="recipe">
+        <h3>開発では生えない</h3>
+        <p><code>ADMIN_HOST</code> が空なので、<code>localhost:8000/</code> は従来どおり welcome。README の手順で Laravel の起動確認に使っている。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">開発環境は起動時にマイグレーション</h2>
+    <p class="lede">セッションを DB に置いたので（Step.07）、<code>sessions</code> テーブルが無いと最初のリクエストから 500 になる。clone して <code>up</code> しただけの状態がこれ。</p>
+
+<pre><span class="c"># backend/docker-entrypoint.sh（開発用）</span>
+php artisan migrate --force   <span class="c"># 適用済みなら何もしない</span></pre>
+
+    <div class="note">
+      <span class="note__label">本番では流さない</span>
+      <p>Cloud Run はインスタンスが同時に複数立ち、起動のたびに流すと競合する。本番は Cloud Run Jobs（<code>ebook-migrate</code>）で単発に実行する。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">本番への反映と確認</h2>
+    <p class="lede">CI/CD はまだ無いので、手でイメージを作って差し替えた。この手順が Step.11 でそのまま CD になる。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>build</b><span>--platform linux/amd64</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>push</b><span>api:v2</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>gcloud run … update</b><span>api / admin / migrate</span></div>
+    </div>
+    <p><b>v1 を上書きせず v2 にする。</b>上書きするとロールバック先が消える。<b>Terraform ではなく gcloud で差し替える</b>のは、イメージを <code>ignore_changes</code> で Terraform の管理から外してあるため。</p>
+
+    <h3>本番で artisan test は流さない</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>理由</th><th>実際</th></tr></thead>
+        <tbody>
+          <tr><td>入っていない</td><td>PHPUnit は <code>require-dev</code>。本番イメージに無い</td></tr>
+          <tr><td>入れても DB を壊す</td><td>9 クラス・80 件が <code>RefreshDatabase</code> でテーブルを作り直す</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>本番は外から叩いて見る。<code>/api/health?deep=1</code> で DB まで、各ホストの応答、リダイレクト、CORS のヘッダ。</p>
+
+    <h3>本番の管理者アカウント</h3>
+    <p><code>admin:user</code> はパスワードを対話で聞くので、TTY の無い Cloud Run Jobs では動かない。Step.08 で用意した <code>cloudsql-proxy</code> 経由で、手元のコンテナから本番 DB に向けて流す。bcrypt は <code>APP_KEY</code> に依存しないので、手元で作っても本番で使える。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>確認</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td>www / docs / cdn / api / admin</td><td>すべて 200</td></tr>
+          <tr><td>80 → 443、apex → www</td><td>301</td></tr>
+          <tr><td>API が返す URL</td><td><code>https://</code>（TrustProxies が効いている）</td></tr>
+          <tr><td>cdn の画像</td><td><code>immutable</code> と <code>age</code>（Cloud CDN がヒット）</td></tr>
+          <tr><td><code>www.</code> の <code>/</code></td><td>200。backend bucket が <code>index.html</code> を返す（Step.07 の未確認事項が解消）</td></tr>
+          <tr><td><code>admin.</code> の <code>/</code></td><td><code>/admin/books</code> へ 302</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">ハマりどころ</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>症状</th><th>原因</th></tr></thead>
+        <tbody>
+          <tr><td>本番の <code>db:seed</code> が <code>fake()</code> で落ちる</td><td>雛形の <code>User::factory()</code> が dev 依存の Faker を使う</td></tr>
+          <tr><td>2 回目の <code>db:seed</code> が一意制約で落ちる</td><td>テストユーザを毎回 <code>create</code> していた</td></tr>
+          <tr><td><code>factory()->createOrFirst()</code> が無い</td><td>ファクトリには無い。<code>exists()</code> で確かめる</td></tr>
+          <tr><td>domain 付きの <code>/</code> を足しても welcome</td><td>ホストを限定しない welcome が先に登録されている</td></tr>
+          <tr><td>clone 直後に 500</td><td><code>sessions</code> テーブルが無い</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">ebook.furusawa.work — Step.09 本番の動作確認</p>
+
+</div>
+</body>
+</html>

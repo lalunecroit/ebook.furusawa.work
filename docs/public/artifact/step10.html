@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ドキュメントの整理と公開</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #f5f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink:     #14181e;
+    --ink-2:   #4a5563;
+    --ink-3:   #7b8797;
+    --rule:    #dde2e9;
+    --rule-2:  #c7ced8;
+    --accent:  #146b57;
+    --accent-soft: #daeee7;
+    --warn:    #b0472e;
+    --warn-soft: #fae7e1;
+    --code-bg: #eef1f5;
+
+    --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #14171b;
+      --surface: #1b1f25;
+      --surface-2: #232830;
+      --ink:     #e7eaef;
+      --ink-2:   #a9b3c0;
+      --ink-3:   #7b8797;
+      --rule:    #2c323a;
+      --rule-2:  #3b434d;
+      --accent:  #49c2a2;
+      --accent-soft: #14312a;
+      --warn:    #e5836a;
+      --warn-soft: #351f19;
+      --code-bg: #12151a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #14171b;
+    --surface: #1b1f25;
+    --surface-2: #232830;
+    --ink:     #e7eaef;
+    --ink-2:   #a9b3c0;
+    --ink-3:   #7b8797;
+    --rule:    #2c323a;
+    --rule-2:  #3b434d;
+    --accent:  #49c2a2;
+    --accent-soft: #14312a;
+    --warn:    #e5836a;
+    --warn-soft: #351f19;
+    --code-bg: #12151a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+  }
+
+  /* ---------- ヘッダ ---------- */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 6vw, 40px);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .tagline { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- セクション ---------- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 6px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  h2::before {
+    content: attr(data-sec);
+    flex: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+  }
+
+  .lede { margin: 0 0 22px; color: var(--ink-2); }
+
+  h3 {
+    margin: 30px 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  p { margin: 0 0 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ---------- 目次 ---------- */
+  nav.toc {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- コード ---------- */
+  pre {
+    margin: 0 0 16px;
+    padding: 16px 18px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  p code, li code, td code, th code {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .c  { color: var(--ink-3); font-style: normal; }  /* コメント */
+  .k  { color: var(--accent); }                     /* キーワード */
+  .s  { color: var(--warn); }                       /* 文字列・数値 */
+
+  /* ---------- 表 ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 16px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom-color: var(--rule-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; }
+
+  /* ---------- 注意ブロック ---------- */
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 4px 4px 0;
+    font-size: 14px;
+  }
+  .note--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note__label {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .note--warn .note__label { color: var(--warn); }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+
+  /* ---------- データフロー図 ---------- */
+  .flow {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .flow__box {
+    flex: 1 1 130px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-radius: 4px;
+  }
+  .flow__box b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .flow__box span { font-size: 12px; color: var(--ink-2); line-height: 1.55; display: block; margin-top: 3px; }
+  .flow__arrow {
+    flex: none;
+    align-self: center;
+    font-family: var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- SVG 図版 ---------- */
+  figure { margin: 0 0 16px; }
+  .figbox {
+    padding: 18px 12px 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  .figbox svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+  }
+
+  /* ---------- 手順リスト ---------- */
+  ol.steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 22px;
+    border-left: 1px solid var(--rule-2);
+    margin-left: 11px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -11px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--surface);
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  ol.steps h3 { margin: 0 0 6px; }
+
+  ul { margin: 0 0 16px; padding-left: 1.2em; }
+  li { margin-bottom: 6px; }
+
+  /* ---------- レシピカード ---------- */
+  .recipes { display: grid; gap: 14px; }
+  .recipe {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .recipe h3 { margin: 0 0 4px; }
+  .recipe > p { font-size: 13.5px; color: var(--ink-2); }
+  .recipe pre { margin-bottom: 0; background: var(--code-bg); }
+
+  hr.end {
+    margin: 64px 0 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+  }
+  .colophon {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .wrap { padding-block: 32px 64px; }
+    section { margin-top: 44px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Artifact 環境が付与している最小リセット相当 */
+  :root {
+    color-scheme: light dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">ebook.furusawa.work / docs</div>
+    <h1>まず全体、必要なら Step ごと</h1>
+    <p class="tagline">Step ごとの記録は増えたが、全体を一度で掴む入口が無かった。全体像とディレクトリ構成のページを足し、ビューアを整理する。docs を本番に出し、リポジトリを公開した。</p>
+    <div class="meta">
+      <span><b>対象</b> docs / README</span>
+      <span><b>公開</b> docs.ebook.furusawa.work</span>
+      <span><b>リポジトリ</b> public</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目次">
+    <ol>
+      <li><a href="#s0">足したページ</a></li>
+      <li><a href="#s1">ビューアの整理</a></li>
+      <li><a href="#s2">JS を圧縮しない判断</a></li>
+      <li><a href="#s3">docs を本番に出す</a></li>
+      <li><a href="#s4">リポジトリを公開する</a></li>
+      <li><a href="#s5">ハマりどころ</a></li>
+    </ol>
+  </nav>
+
+  <!-- ================================================== 0 -->
+  <section id="s0">
+    <h2 data-sec="§00">足したページ</h2>
+
+    <div class="recipes">
+      <div class="recipe">
+        <h3>概要・構成（overview.html）</h3>
+        <p>完成した全体の姿を 1 枚に。中心は<b>ホストから見た GCP リソースの相関図</b>で、伝えたいのは 2 点。</p>
+        <p>6 つのホスト名はすべて<b>同じ IP・同じ LB・同じ証明書</b>を指し、振り分けは URL マップの <code>host_rule</code> だけ。そして <b>cdn バケットに書けるのは ebook-admin だけ</b>で、公開 API と管理画面を分けた理由が権限の違いとして見える。</p>
+      </div>
+      <div class="recipe">
+        <h3>ディレクトリ構成（structure.html）</h3>
+        <p>リポジトリの中身を<b>なぜその形なのか</b>と合わせて。Web から見えるのは <code>public/</code> の中だけ、ルートを 3 ファイルに分けた理由、<code>config.js</code> がホスト名で接続先を決める理由、<code>index.json</code> をコミットしない理由など。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== 1 -->
+  <section id="s1">
+    <h2 data-sec="§01">ビューアの整理</h2>
+    <p class="lede">サイドバーを OVERVIEW と PER PR に分け、初めて開いたときは概要を出す。</p>
+
+<pre>OVERVIEW
+  概要・構成            <span class="c">← 初期表示</span>
+  ディレクトリ構成
+
+PER PR
+  ▸ Markdown           <span class="c">← 既定で閉じている</span>
+  ▸ Artifact</pre>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>やったこと</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td><code>&lt;details&gt;</code> で折りたたむ</td><td>開閉の JS が要らず、キーボード操作もブラウザ任せにできる</td></tr>
+          <tr><td>見ているページの欄だけ開く</td><td>直リンクやブックマークで来たとき、閉じていると現在地が分からない</td></tr>
+          <tr><td>OVERVIEW に出すものは PER PR から除く</td><td>二重に出さない</td></tr>
+          <tr><td>見出しに区切り線</td><td>灰色の小さな文字だとリンクの一種に見える</td></tr>
+          <tr><td>ファイル名を一段深く</td><td>小見出しの下にあることを見た目で示す</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================================================== 2 -->
+  <section id="s2">
+    <h2 data-sec="§02">JS を圧縮しない判断</h2>
+    <p class="lede">README に「学習教材のため、JS は未圧縮・未難読化」と明記した。手抜きではなく、選んだこと。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th></th><th>生</th><th>gzip 後</th></tr></thead>
+        <tbody>
+          <tr><td>config.js</td><td>1,977 B</td><td>1,085 B</td></tr>
+          <tr><td>library.js</td><td>5,730 B</td><td>2,255 B</td></tr>
+          <tr><td>reader.js</td><td>24,270 B</td><td>8,320 B</td></tr>
+          <tr><td><b>合計</b></td><td><b>32 KB</b></td><td><b>11.7 KB</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>実際に流れるのは gzip 後の 11.7 KB で、Cloud CDN がキャッシュする。minify で削れるのは初回の 3〜4 KB。<b>クライアント JS の難読化は保護にならない</b>（開発者ツールで整形して読める）。ビルドツールを入れない方針とも矛盾する。そして<b>コメント付きの読めるソースが、このリポジトリでは資産</b>。</p>
+  </section>
+
+  <!-- ================================================== 3 -->
+  <section id="s3">
+    <h2 data-sec="§03">docs を本番に出す</h2>
+
+    <div class="flow">
+      <div class="flow__box"><b>index.json</b><span>ファイル一覧を生成</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>rsync</b><span>GCS へ</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>objects update</b><span>.md を text/plain に</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>CDN 無効化</b><span>max-age=300 のため</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>rm index.json</b><span>手元から消す</span></div>
+    </div>
+
+    <p><b>CDN のキャッシュを消す。</b>何もしなければ最大 5 分は古い版が見える。<code>?cb=…</code> はキャッシュキーに含まれないので回避にならない。</p>
+    <p><b>手元の <code>index.json</code> を消す。</b>ビューアは <code>index.json</code> を優先するので、残すと新しい Markdown がローカルのサイドバーに出なくなる。</p>
+
+    <div class="note">
+      <span class="note__label">この手順は Step.11 で CD へ</span>
+      <p>main へのマージで自動で流れるようになる。</p>
+    </div>
+  </section>
+
+  <!-- ================================================== 4 -->
+  <section id="s4">
+    <h2 data-sec="§04">リポジトリを公開する</h2>
+    <p class="lede">一度でも履歴に入った秘密情報は、あとから消しても残る。公開前に Git の履歴全体を走査した。</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>確認</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td><code>.env</code></td><td>履歴に一度も無い。<code>.env.example</code> の <code>APP_KEY=</code> は空</td></tr>
+          <tr><td><code>*.tfstate</code></td><td>履歴に無い</td></tr>
+          <tr><td>鍵・API キー</td><td>無い（<code>PRIVATE KEY</code> / <code>AIza</code> / <code>ya29.</code> / <code>AKIA</code> を全履歴で検索）</td></tr>
+          <tr><td>DB パスワード</td><td>平文の混入なし。本番は Secret Manager</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="recipes">
+      <div class="recipe">
+        <h3>テストアカウントは意図して公開</h3>
+        <p>本番の管理画面に実際に入れる資格情報。触ってもらう価値を取った。ログイン試行は 5 回でレート制限が掛かる。</p>
+      </div>
+      <div class="recipe">
+        <h3>プロジェクト ID やバケット名は問題ない</h3>
+        <p>tfstate は非公開、Cloud SQL は IP 許可リストが空、Cloud Run は LB 経由のみ。<b>アクセス制御を IAM に寄せてあるので、名前を知られても入口が無い。</b></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== 5 -->
+  <section id="s5">
+    <h2 data-sec="§05">ハマりどころ</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>症状</th><th>原因</th></tr></thead>
+        <tbody>
+          <tr><td>README の表が表にならない</td><td>区切り線の上にヘッダ行が無い</td></tr>
+          <tr><td><code>&lt;sub&gt;</code> の中の文字が重なる</td><td>インライン要素の中にリスト（ブロック要素）を入れた</td></tr>
+          <tr><td>注意書きの 2 項目が 1 行につながる</td><td><code>&gt;</code> の行は同じ段落に結合される。<code>-</code> の箇条書きにする</td></tr>
+          <tr><td>本番の docs に新しいページが出ない</td><td>Cloud CDN が古い <code>index.json</code> を返している</td></tr>
+          <tr><td>ローカルで新しい md が出ない</td><td>デプロイで作った <code>index.json</code> が残っている</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>GitHub の Markdown で複数行を確実に小さくする手段は実質無い。<code>&lt;small&gt;</code> や <code>style</code> はサニタイザで落ちる。README の注意書きは alert 記法（<code>&gt; [!NOTE]</code>）で本文から一段引いた。</p>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">ebook.furusawa.work — Step.10 docs の整理と公開</p>
+
+</div>
+</body>
+</html>

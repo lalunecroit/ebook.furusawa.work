@@ -395,6 +395,7 @@
       <span><b>バック</b> PHP 8.4 / Laravel 13</span>
       <span><b>DB</b> MySQL</span>
       <span><b>インフラ</b> Docker Compose / Terraform + GCP</span>
+      <span><b>CI/CD</b> GitHub Actions</span>
     </div>
   </header>
 
@@ -407,7 +408,7 @@
       <li><a href="#s4">ローカル環境</a></li>
       <li><a href="#s5">設計で効いた判断</a></li>
       <li><a href="#s6">Terraform の組み立て</a></li>
-      <li><a href="#s7">積み残し</a></li>
+      <li><a href="#s7">CI/CD</a></li>
     </ol>
   </nav>
 
@@ -542,7 +543,7 @@
 
           <rect class="bx" x="12" y="422" width="230" height="52" rx="4"/>
           <text class="ttl" x="28" y="444">Artifact Registry</text>
-          <text class="sub" x="28" y="462">api:v2 を 2 サービスで共有</text>
+          <text class="sub" x="28" y="462">CD が push し、2 サービスで共有</text>
 
           <rect class="bx" x="460" y="422" width="270" height="52" rx="4"/>
           <text class="ttl" x="476" y="444">Cloud Run Jobs  ebook-migrate</text>
@@ -631,10 +632,11 @@
           <tr><td>Cloud Run ×2</td><td><code>ebook-api</code> / <code>ebook-admin</code>。同じイメージ</td></tr>
           <tr><td>Cloud SQL</td><td>MySQL 8.0 / <code>db-f1-micro</code>。IP 許可リストは空</td></tr>
           <tr><td>Secret Manager</td><td><code>APP_KEY</code> と DB パスワード。値ではなく参照を渡す</td></tr>
-          <tr><td>Artifact Registry</td><td>コンテナイメージ。直近 10 世代を保持</td></tr>
+          <tr><td>Artifact Registry</td><td>コンテナイメージ。タグはコミットハッシュ、直近 10 世代を保持</td></tr>
           <tr><td>Cloud Run Jobs</td><td><code>ebook-migrate</code>。起動時には流さない</td></tr>
           <tr><td>Cloud DNS</td><td>既存ゾーンに A レコード 6 本</td></tr>
           <tr><td>GCS ×4</td><td>frontend / cdn / docs / tfstate</td></tr>
+          <tr><td>Workload Identity Federation</td><td>GitHub Actions から鍵なしで入る。CD 用と CI 用で SA を分ける</td></tr>
         </tbody>
       </table>
     </div>
@@ -757,6 +759,7 @@ D LB + 証明書 + DNS  <span class="c">→ 約 2,900 円/月、証明書待ち 
 │   ├── static_site/      <span class="c">GCS + backend bucket + Cloud CDN</span>
 │   ├── api_service/      <span class="c">Cloud Run + SA + IAM（api / admin で 2 回呼ぶ）</span>
 │   ├── job/              <span class="c">Cloud Run Jobs</span>
+│   ├── github_oidc/      <span class="c">GitHub Actions からの鍵なしの認証（WIF）</span>
 │   └── frontdoor/        <span class="c">LB + URL マップ + 証明書 + DNS</span>
 └── environments/prod/    <span class="c">上記を組み合わせる</span></pre>
 
@@ -767,39 +770,105 @@ D LB + 証明書 + DNS  <span class="c">→ 約 2,900 円/月、証明書待ち 
     <p><b>DNS ゾーンは Terraform の管理外。</b><code>data</code> で参照するだけにしてある。
     <code>terraform destroy</code> してもゾーンは残り、ドメインが死なない。</p>
 
-    <p><b>イメージの更新は Terraform の仕事にしない。</b><code>ignore_changes</code> を付けてあるので、
-    デプロイは <code>gcloud run services update --image</code> で行う。CI を入れたらそちらへ移す。</p>
+    <p><b>イメージの更新は Terraform の仕事にしない。</b><code>ignore_changes</code> を付けてあり、
+    main へのマージで CD（§07）が差し替える。インフラの変更だけは、plan を読んでから手で apply する。</p>
   </section>
 
   <!-- ================================================== 7 -->
   <section id="s7">
-    <h2 data-sec="§07">積み残し</h2>
+    <h2 data-sec="§07">CI/CD</h2>
+    <p class="lede">検査は PR の段階、デプロイは main へのマージ。GitHub Actions から GCP へは鍵を使わずに入る。</p>
+
+    <div class="flow">
+      <div class="flow__box"><b>feature/stepNN</b><span>作業ブランチ</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>develop</b><span>PR で CI</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>main</b><span>PR で CI → マージで CD</span></div>
+    </div>
 
     <div class="tablewrap">
       <table>
-        <thead><tr><th>項目</th><th>いまの状態</th></tr></thead>
+        <thead><tr><th></th><th>何をするか</th><th>いつ動くか</th><th>SA</th></tr></thead>
         <tbody>
-          <tr><td>CI/CD</td><td>無し。build と deploy は手動。Workload Identity Federation で鍵なし化するのが次</td></tr>
-          <tr><td>権限の分離</td><td><code>users</code> の全員が管理者。読者アカウントを作るには権限列か別ガードが要る</td></tr>
-          <tr><td>ファイルと DB の整合</td><td>画像アップロードは GCS 書き込みと DB 更新が別トランザクション</td></tr>
-          <tr><td>しおり</td><td><code>localStorage</code> のまま。サーバ保存は未対応</td></tr>
-          <tr><td>検索</td><td>一覧に検索・絞り込みが無い</td></tr>
-          <tr><td>監視</td><td>アップタイムチェックとアラートは未設定</td></tr>
-          <tr><td><code>min-instances</code></td><td>1 で様子見中。請求額を見てから 0 に落とすか判断</td></tr>
+          <tr><td><b>CI</b></td><td>Pint、PHPUnit、<code>terraform plan</code></td><td>develop / main 向けの PR</td><td><code>github-planner</code>（読み取り専用）</td></tr>
+          <tr><td><b>CD</b></td><td>ビルド、マイグレーション、デプロイ、静的ファイルの配置</td><td>main への push</td><td><code>github-deployer</code></td></tr>
         </tbody>
       </table>
     </div>
 
+    <p>main にマージされてから検査すると、<b>壊れたコードが入ってから気づく</b>ことになる。だからテストは PR で流す。</p>
+
+    <h3>CD がやること</h3>
+    <div class="flow">
+      <div class="flow__box"><b>build / push</b><span>タグはコミットハッシュ</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>migrate</b><span>ebook-migrate</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>差し替え</b><span>api / admin</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>疎通確認</b><span>/api/health?deep=1</span></div>
+    </div>
+    <div class="flow">
+      <div class="flow__box"><b>frontend</b><span>rsync</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>docs</b><span>index.json を生成して rsync</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>CDN 無効化</b><span>www と docs だけ</span></div>
+    </div>
+
+    <p><b>マイグレーションは新しいコードより先。</b>新しいコードが新しいテーブル定義を前提にしていても、切り替えた瞬間に壊れない。
+    <b>CDN の無効化は www と docs だけ。</b>画像は <code>?v=</code> で URL が変わる仕組みなので消さない。</p>
+
+    <h3>鍵なしで GCP に入る</h3>
+    <div class="flow">
+      <div class="flow__box"><b>GitHub Actions</b><span>OIDC トークンを発行</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>STS</b><span>検証して交換</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>SA になりすます</b><span>短命のトークン</span></div>
+      <div class="flow__arrow">▶</div>
+      <div class="flow__box"><b>GCP</b></div>
+    </div>
+
+    <div class="recipes">
+      <div class="recipe">
+        <h3>SA を CD 用と CI 用に分ける</h3>
+        <p>デプロイ権限（<code>github-deployer</code>）は <b>main への push からだけ</b>使える。
+        PR のブランチから使えると、レビュー前のコードを本番に出せてしまう。
+        plan 用（<code>github-planner</code>）は読み取り専用なので、全ブランチから使える。</p>
+      </div>
+      <div class="recipe">
+        <h3>信頼の条件は数値 ID で縛る</h3>
+        <p>このリポジトリ以外からのトークンは交換させない。名前ではなく<b>数値 ID</b> で判定するので、
+        リポジトリが消されて同じ名前で作り直されても一致しない。
+        GitHub が出す subject も <code>owner@id/name@id</code> の不変 ID 形式に合わせてある。</p>
+      </div>
+      <div class="recipe">
+        <h3>権限は触るものにだけ</h3>
+        <p><code>roles/editor</code> は渡さない。デプロイ用 SA が書けるのは frontend と docs のバケットだけで、
+        <b>cdn は除外</b>（本番の画像は管理画面から入るもので、サンプルで上書きしない）。
+        CDN の無効化は、無効化に要る 3 権限だけのカスタムロールにした。</p>
+      </div>
+    </div>
+
     <div class="note">
-      <span class="note__label">作った順の記録</span>
-      <p>ここまでの過程は Step.01〜08 のドキュメントに分けてある。
-      ビューアの実装、API 化、DB 導入、Laravel の作法への矯正、一覧の追加、管理画面、
-      本番設計、Terraform 実装という順。</p>
+      <span class="note__label">インフラは自動で apply しない</span>
+      <p>CI は <code>terraform plan</code> を表示するだけで、apply は差分を読んだうえで手で行う。
+      インフラの変更を含むときは、<b>main にマージする前に apply</b> する。CD は GCP の権限を前提に動くので、
+      先に main に入れると権限の変更が間に合わずに落ちる。</p>
     </div>
   </section>
 
+  <div class="note">
+    <span class="note__label">作った順の記録</span>
+    <p>ここまでの過程は Step.01〜11 のドキュメントに分けてある。
+    ビューアの実装、API 化、DB 導入、Laravel の作法への矯正、一覧の追加、管理画面、
+    本番設計、Terraform 実装、本番の動作確認、ドキュメントの整理、CI/CD という順。</p>
+  </div>
+
   <hr class="end">
-  <p class="colophon">ebook.furusawa.work — Vanilla JS / Laravel 13 / MySQL / Terraform + GCP</p>
+  <p class="colophon">ebook.furusawa.work — Vanilla JS / Laravel 13 / MySQL / Terraform + GCP / GitHub Actions</p>
 
 </div>
 </body>
