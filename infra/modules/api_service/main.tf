@@ -113,9 +113,15 @@ resource "google_cloud_run_v2_service" "this" {
     }
   }
 
-  # イメージの更新は CI の仕事。Terraform に差分として見せない (step07 の 4.2)。
+  # イメージの更新は CD の仕事。Terraform に差分として見せない (step07 の 4.2)。
+  # client / client_version は gcloud でデプロイすると gcloud が書き込む印で、
+  # 放っておくとデプロイのたびに plan に差分として出続ける。
   lifecycle {
-    ignore_changes = [template[0].containers[0].image]
+    ignore_changes = [
+      template[0].containers[0].image,
+      client,
+      client_version,
+    ]
   }
 
   depends_on = [

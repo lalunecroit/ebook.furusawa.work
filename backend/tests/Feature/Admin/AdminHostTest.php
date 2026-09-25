@@ -59,7 +59,7 @@ class AdminHostTest extends TestCase
         }
     }
 
-    public function test_公開APIはホストを問わず届く(): void
+    public function test_公開apiはホストを問わず届く(): void
     {
         // 制限をかけるのは管理画面だけ。API は www. から叩かれる
         foreach ([self::ADMIN_HOST, 'api.example.test', 'www.example.test'] as $host) {

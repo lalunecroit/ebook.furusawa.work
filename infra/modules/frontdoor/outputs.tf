@@ -23,3 +23,8 @@ output "urls" {
     docs  = "https://docs.${var.domain}"
   }
 }
+
+output "url_map_name" {
+  description = "Cloud CDN のキャッシュ無効化 (gcloud compute url-maps invalidate-cdn-cache) に渡す"
+  value       = google_compute_url_map.main.name
+}

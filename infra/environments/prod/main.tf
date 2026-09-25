@@ -211,3 +211,32 @@ module "frontdoor" {
   api_service_name   = module.api.name
   admin_service_name = module.admin.name
 }
+
+# --------------------------------------------------------------- CI/CD
+# GitHub Actions から鍵なしで入る (Workload Identity Federation)。
+# CD 用 (main からだけ) と CI 用 (読み取りのみ) で SA を分けている。
+module "github_oidc" {
+  source = "../../modules/github_oidc"
+
+  project_id    = var.project_id
+  region        = var.region
+  repository    = var.github_repository
+  repository_id = var.github_repository_id
+
+  # CD が触るもの
+  artifact_registry_repository = module.registry.repository_id
+  cloud_run_services           = [module.api.name, module.admin.name]
+  cloud_run_jobs               = [module.migrate_job.name]
+  runtime_service_accounts = [
+    module.api.service_account_email,
+    module.admin.service_account_email,
+    module.migrate_job.service_account_email,
+  ]
+
+  # cdn は入れない。本番の画像は管理画面から入るもので、サンプルで上書きしない
+  deploy_buckets = [module.frontend.bucket_name, module.docs.bucket_name]
+
+  # CI (plan) が読むもの。バケット名は bootstrap と同じ規則で組み立てている
+  state_bucket          = "${var.project_id}-tfstate"
+  plan_readable_secrets = [module.database.password_secret_id]
+}

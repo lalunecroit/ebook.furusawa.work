@@ -48,7 +48,7 @@ class CorsTest extends TestCase
         );
     }
 
-    public function test_複数オリジンのときは_Vary_Origin_が付く(): void
+    public function test_複数オリジンのときは_vary_origin_が付く(): void
     {
         // オリジンごとに応答が変わるので、途中のキャッシュが混同しないよう Vary が要る
         $this->allowBothOrigins();
@@ -84,7 +84,7 @@ class CorsTest extends TestCase
         $this->assertSame('3600', $res->headers->get('Access-Control-Max-Age'));
     }
 
-    public function test_管理画面はCORSの対象外(): void
+    public function test_管理画面はcorsの対象外(): void
     {
         // admin. は自分のページから自分のサーバを叩くので同一オリジン。
         // cors.paths が api/* だけであることの裏取り。

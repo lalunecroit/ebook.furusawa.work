@@ -25,7 +25,7 @@ class HealthTest extends TestCase
             ->assertJsonStructure(['status', 'env', 'time']);
     }
 
-    public function test_浅い確認は_DB_に触らない(): void
+    public function test_浅い確認は_db_に触らない(): void
     {
         // DB が落ちている状況を作る。触ったら例外が出るので、
         // 200 が返ればアクセスしていないことになる。
@@ -34,7 +34,7 @@ class HealthTest extends TestCase
         $this->getJson('/api/health')->assertOk();
     }
 
-    public function test_deep_を付けると_DB_まで確認する(): void
+    public function test_deep_を付けると_db_まで確認する(): void
     {
         $this->getJson('/api/health?deep=1')
             ->assertOk()
@@ -42,7 +42,7 @@ class HealthTest extends TestCase
             ->assertJsonPath('database', 'ok');
     }
 
-    public function test_deep_で_DB_に繋がらなければ_503(): void
+    public function test_deep_で_db_に繋がらなければ_503(): void
     {
         DB::shouldReceive('select')
             ->once()

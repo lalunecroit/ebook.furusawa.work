@@ -70,3 +70,14 @@ output "urls" {
   description = "公開 URL"
   value       = module.frontdoor.urls
 }
+
+output "github_actions" {
+  description = "workflow に書く値。どれも秘密ではない"
+  value = {
+    workload_identity_provider = module.github_oidc.workload_identity_provider
+    deployer_service_account   = module.github_oidc.deployer_service_account
+    planner_service_account    = module.github_oidc.planner_service_account
+    registry_url               = module.registry.url
+    url_map                    = module.frontdoor.url_map_name
+  }
+}
