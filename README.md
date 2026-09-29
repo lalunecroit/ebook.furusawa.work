@@ -95,19 +95,23 @@ Docker Compose でローカル一式が立ち上がり、本番は Terraform で
 GitHub Actions で、PR の段階で検査し、main へのマージで本番へデプロイします。
 
 ```
-feature/stepNN ──PR──▶ develop ──PR──▶ main
-                 CI              CI       └─▶ CD
+ ┌─────────┐          ┌─────────┐          ┌──────┐
+ │ feature │ ──PR───▶ │ develop │ ──PR───▶ │ main │
+ └─────────┘    │     └─────────┘    │     └──┬───┘
+                ▼                    ▼        │ マージ
+            ┌──────┐             ┌──────┐  ┌──▼───┐
+            │  CI  │             │  CI  │  │  CD  │
+            └──────┘             └──────┘  └──────┘
 ```
 
 | workflow | いつ動くか | 何をするか |
 |---|---|---|
 | `ci-backend.yml` | `backend/` が変わった PR | Pint（整形の検査）→ PHPUnit |
-| `ci-infra.yml` | `infra/` が変わった PR | `terraform fmt` → `validate` → `plan`（結果は実行ページの Summary に出る） |
+| `ci-infra.yml` | `infra/` が変わった PR | `terraform fmt` → `validate` → `plan` |
 | `cd.yml` | main への push | イメージを build / push → マイグレーション → api / admin を差し替え → 疎通確認 → frontend / docs を配置 → CDN のキャッシュを無効化 |
 
 - GCP への認証は **Workload Identity Federation**。GitHub に鍵を置いていません
 - デプロイ用の SA は **main への push からだけ**使えます。PR のブランチからは本番を触れません
-- インフラの変更は自動で apply しません。PR で plan を確認し、**main へマージする前に手で `terraform apply`** します
 
 ### infra ディレクトリ
 
