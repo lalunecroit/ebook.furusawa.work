@@ -108,7 +108,7 @@ GitHub Actions で、PR の段階で検査し、main へのマージで本番へ
 |---|---|---|
 | `ci-backend.yml` | `backend/` が変わった PR | Pint（整形の検査）→ PHPUnit |
 | `ci-infra.yml` | `infra/` が変わった PR | `terraform fmt` → `validate` → `plan` |
-| `cd.yml` | main への push | イメージを build / push → マイグレーション → api / admin を差し替え → 疎通確認 → frontend / docs を配置 → CDN のキャッシュを無効化 |
+| `cd.yml` | main への push | **backend**：build / push → マイグレーション → api・admin の差し替え → 疎通確認<br>**static**：frontend・docs の配置 → CDN のキャッシュ無効化 |
 
 - GCP への認証は **Workload Identity Federation**。GitHub に鍵を置いていません
 - デプロイ用の SA は **main への push からだけ**使えます。PR のブランチからは本番を触れません
