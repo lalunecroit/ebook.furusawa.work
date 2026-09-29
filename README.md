@@ -22,10 +22,10 @@ Docker Compose でローカル一式が立ち上がり、本番は Terraform で
 | バックエンド | PHP 8.4 / Laravel 13 |
 | データベース | MySQL |
 | インフラ | Docker Compose（ローカル） / Terraform + GCP（本番） |
+| CI/CD | GitHub Actions |
 
 > [!NOTE]
 > - 学習教材のため、JS は未圧縮・未難読化
-> - CI/CD 周りの実装はこれから
 
 ---
 
@@ -84,10 +84,30 @@ Docker Compose でローカル一式が立ち上がり、本番は Terraform で
 | Cloud Run ×2 | `ebook-api` / `ebook-admin`。**同じイメージ**を環境変数と権限だけ変えて動かす |
 | Cloud SQL | MySQL 8.0 / `db-f1-micro`。パブリック IP はあるが IP 許可リストは空 |
 | Secret Manager | `APP_KEY` と DB パスワード。Cloud Run には値ではなく参照を渡す |
-| Artifact Registry | コンテナイメージ |
+| Artifact Registry | コンテナイメージ。タグはコミットハッシュ |
 | Cloud Run Jobs | `ebook-migrate`。マイグレーションは起動時に流さず単発で実行する |
 | Cloud DNS | 既存ゾーンに A レコードを 6 本追加 |
+| Workload Identity Federation | GitHub Actions から鍵なしで入る。CD 用と CI 用で SA を分ける |
 
+
+### CI/CD
+
+GitHub Actions で、PR の段階で検査し、main へのマージで本番へデプロイします。
+
+```
+feature/stepNN ──PR──▶ develop ──PR──▶ main
+                 CI              CI       └─▶ CD
+```
+
+| workflow | いつ動くか | 何をするか |
+|---|---|---|
+| `ci-backend.yml` | `backend/` が変わった PR | Pint（整形の検査）→ PHPUnit |
+| `ci-infra.yml` | `infra/` が変わった PR | `terraform fmt` → `validate` → `plan`（結果は実行ページの Summary に出る） |
+| `cd.yml` | main への push | イメージを build / push → マイグレーション → api / admin を差し替え → 疎通確認 → frontend / docs を配置 → CDN のキャッシュを無効化 |
+
+- GCP への認証は **Workload Identity Federation**。GitHub に鍵を置いていません
+- デプロイ用の SA は **main への push からだけ**使えます。PR のブランチからは本番を触れません
+- インフラの変更は自動で apply しません。PR で plan を確認し、**main へマージする前に手で `terraform apply`** します
 
 ### infra ディレクトリ
 
@@ -100,6 +120,7 @@ infra/
 │   ├── static_site/      GCS + backend bucket + Cloud CDN
 │   ├── api_service/      Cloud Run + SA + IAM
 │   ├── job/              Cloud Run Jobs
+│   ├── github_oidc/      GitHub Actions からの鍵なしの認証（WIF）
 │   └── frontdoor/        LB + URL マップ + 証明書 + DNS
 └── environments/prod/    上記を組み合わせる
 ```
