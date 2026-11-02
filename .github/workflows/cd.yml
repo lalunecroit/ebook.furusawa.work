@@ -38,7 +38,9 @@ env:
 jobs:
   backend:
     name: backend（ビルドとデプロイ）
-    if: github.ref == 'refs/heads/main'
+    # 本番を止めている間はデプロイできない (DB も LB も無い)。
+    # リポジトリ変数 CD_PAUSED を true にすると、失敗させずに飛ばす
+    if: github.ref == 'refs/heads/main' && vars.CD_PAUSED != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

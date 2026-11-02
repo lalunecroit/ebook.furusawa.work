@@ -25,6 +25,22 @@ variable "min_instances" {
   default     = 1
 }
 
+variable "db_activation_policy" {
+  description = "Cloud SQL の稼働状態。ALWAYS で稼働、NEVER で停止"
+  type        = string
+  default     = "ALWAYS"
+}
+
+variable "frontdoor_enabled" {
+  description = <<-EOT
+    LB・証明書・DNS レコードを作るか。
+    LB は停止できず、課金を止めるには削除するしかない。
+    false にすると全サブドメインが見えなくなる。true に戻せば作り直す。
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "dns_zone_name" {
   description = <<-EOT
     レコードを追加する Cloud DNS ゾーンの名前。

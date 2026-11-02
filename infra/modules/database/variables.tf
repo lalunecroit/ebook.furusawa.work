@@ -68,6 +68,15 @@ variable "database_user" {
   default     = "ebooks"
 }
 
+variable "activation_policy" {
+  description = <<-EOT
+    ALWAYS で稼働、NEVER で停止。
+    停止するとインスタンス料金は止まるが、ストレージの料金は残る。データは消えない。
+  EOT
+  type        = string
+  default     = "ALWAYS"
+}
+
 variable "deletion_protection" {
   description = <<-EOT
     誤って destroy するのを防ぐ。
