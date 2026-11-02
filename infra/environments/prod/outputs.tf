@@ -55,20 +55,20 @@ output "migrate_job" {
 
 output "lb_ip_address" {
   description = "LB のグローバル静的 IP"
-  value       = module.frontdoor.ip_address
+  value       = one(module.frontdoor[*].ip_address)
 }
 
 output "certificate" {
   description = "マネージド証明書。ACTIVE になるまで 15〜60 分かかる"
   value = {
-    name    = module.frontdoor.certificate_name
-    domains = module.frontdoor.certificate_domains
+    name    = one(module.frontdoor[*].certificate_name)
+    domains = one(module.frontdoor[*].certificate_domains)
   }
 }
 
 output "urls" {
   description = "公開 URL"
-  value       = module.frontdoor.urls
+  value       = one(module.frontdoor[*].urls)
 }
 
 output "github_actions" {
@@ -78,6 +78,6 @@ output "github_actions" {
     deployer_service_account   = module.github_oidc.deployer_service_account
     planner_service_account    = module.github_oidc.planner_service_account
     registry_url               = module.registry.url
-    url_map                    = module.frontdoor.url_map_name
+    url_map                    = one(module.frontdoor[*].url_map_name)
   }
 }

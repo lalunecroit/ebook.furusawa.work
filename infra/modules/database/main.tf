@@ -17,6 +17,8 @@ resource "google_sql_database_instance" "main" {
     # MYSQL_8_4 では ENTERPRISE_PLUS になって db-f1-micro が弾かれる。
     edition = var.edition
 
+    activation_policy = var.activation_policy
+
     tier              = var.tier
     availability_type = "ZONAL" # REGIONAL にすると冗長化される代わりに倍額
     disk_size         = var.disk_size_gb
