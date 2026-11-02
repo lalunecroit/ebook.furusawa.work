@@ -72,6 +72,8 @@ module "database" {
 
   project_id = var.project_id
   region     = var.region
+
+  activation_policy = var.db_activation_policy
 }
 
 # --------------------------------------------------------------- C段
@@ -196,6 +198,7 @@ module "migrate_job" {
 # 証明書は DNS レコードが全部揃ってから発行されるので、apply 後に待ち時間がある。
 module "frontdoor" {
   source = "../../modules/frontdoor"
+  count  = var.frontdoor_enabled ? 1 : 0
 
   project_id = var.project_id
   region     = var.region
@@ -210,6 +213,12 @@ module "frontdoor" {
 
   api_service_name   = module.api.name
   admin_service_name = module.admin.name
+}
+
+# count を付けたので、既存のリソースを作り直さず新しい住所へ移す
+moved {
+  from = module.frontdoor
+  to   = module.frontdoor[0]
 }
 
 # --------------------------------------------------------------- CI/CD
