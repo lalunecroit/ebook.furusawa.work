@@ -73,7 +73,9 @@ module "database" {
   project_id = var.project_id
   region     = var.region
 
-  activation_policy = var.db_activation_policy
+  instance_enabled    = var.db_enabled
+  activation_policy   = var.db_activation_policy
+  deletion_protection = var.db_deletion_protection
 }
 
 # --------------------------------------------------------------- C段

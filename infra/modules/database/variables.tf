@@ -68,6 +68,16 @@ variable "database_user" {
   default     = "ebooks"
 }
 
+variable "instance_enabled" {
+  description = <<-EOT
+    インスタンスを作るか。false にするとインスタンスとその中の DB・ユーザを消す。
+    停止中もパブリック IP の料金がかかるので、長く使わないときは消す。
+    Secret と書き出し先のバケットは残る。消す前に deletion_protection を外しておく。
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "activation_policy" {
   description = <<-EOT
     ALWAYS で稼働、NEVER で停止。

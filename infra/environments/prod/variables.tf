@@ -25,10 +25,26 @@ variable "min_instances" {
   default     = 1
 }
 
+variable "db_enabled" {
+  description = <<-EOT
+    Cloud SQL のインスタンスを作るか。
+    false にするとインスタンスごと消え、データも消える。先に SQL ダンプを書き出しておく。
+    true に戻せば空のインスタンスを作り直すので、ダンプを取り込む。
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "db_activation_policy" {
   description = "Cloud SQL の稼働状態。ALWAYS で稼働、NEVER で停止"
   type        = string
   default     = "ALWAYS"
+}
+
+variable "db_deletion_protection" {
+  description = "Cloud SQL を Terraform から消せないようにする。db_enabled を false にする前に外す"
+  type        = bool
+  default     = true
 }
 
 variable "frontdoor_enabled" {
