@@ -4,6 +4,8 @@
 # そのため private IP も Serverless VPC Access コネクタも要らない。
 
 resource "google_sql_database_instance" "main" {
+  count = var.instance_enabled ? 1 : 0
+
   project          = var.project_id
   name             = var.instance_name
   region           = var.region
@@ -78,9 +80,11 @@ resource "google_sql_database_instance" "main" {
 }
 
 resource "google_sql_database" "app" {
+  count = var.instance_enabled ? 1 : 0
+
   project  = var.project_id
   name     = var.database_name
-  instance = google_sql_database_instance.main.name
+  instance = google_sql_database_instance.main[0].name
 
   # Laravel のマイグレーションに合わせる
   charset   = "utf8mb4"
@@ -100,9 +104,11 @@ resource "random_password" "db" {
 }
 
 resource "google_sql_user" "app" {
+  count = var.instance_enabled ? 1 : 0
+
   project  = var.project_id
   name     = var.database_user
-  instance = google_sql_database_instance.main.name
+  instance = google_sql_database_instance.main[0].name
   password = random_password.db.result
 
   # ソケット経由なのでホスト制限は使わない (MySQL の '%' 相当)
@@ -130,6 +136,55 @@ resource "google_secret_manager_secret" "db_password" {
 resource "google_secret_manager_secret_version" "db_password" {
   secret      = google_secret_manager_secret.db_password.id
   secret_data = random_password.db.result
+}
+
+# --------------------------------------------------------------- 書き出し先
+# インスタンスを消している間、データは SQL ダンプとしてここに置く。
+# バケットはインスタンスの有無に関係なく残す。
+#
+#   書き出し: gcloud sql export sql ebook-db gs://<bucket>/<file>.sql.gz --database=ebooks
+#   取り込み: gcloud sql import sql ebook-db gs://<bucket>/<file>.sql.gz --database=ebooks
+
+resource "google_storage_bucket" "export" {
+  project  = var.project_id
+  name     = "${var.project_id}-db-export"
+  location = upper(var.region)
+
+  # ダンプは作り直せないので、中身ごと消えないようにする
+  force_destroy = false
+
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+
+  labels = {
+    managed_by = "terraform"
+    component  = "database"
+  }
+}
+
+# 書き出しと取り込みは、Cloud SQL のサービスアカウントがバケットを読み書きして行う
+resource "google_storage_bucket_iam_member" "export" {
+  count = var.instance_enabled ? 1 : 0
+
+  bucket = google_storage_bucket.export.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_sql_database_instance.main[0].service_account_email_address}"
+}
+
+# count を付けたので、既存のリソースを作り直さず新しい住所へ移す
+moved {
+  from = google_sql_database_instance.main
+  to   = google_sql_database_instance.main[0]
+}
+
+moved {
+  from = google_sql_database.app
+  to   = google_sql_database.app[0]
+}
+
+moved {
+  from = google_sql_user.app
+  to   = google_sql_user.app[0]
 }
 
 # APP_KEY は Terraform 側に値を使う相手がいない (Cloud Run が参照するだけ)。
